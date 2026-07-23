@@ -67,8 +67,8 @@
       <h2>QR Event — Self Check-in</h2>
       <p>
         Tempel QR ini di meja registrasi. Peserta scan pakai HP →
-        halaman check-in terbuka → ketik nama → tekan <b>Enter</b> →
-        nama otomatis dicocokkan dengan data registrasi dan langsung tercatat <b>HADIR</b>.
+        halaman self check-in terbuka → ketik nama panjang → pilih nama → klik tombol <b>HADIR</b> →
+        sistem otomatis mencatat kehadiran. Peserta tidak bisa mengakses Monitor Panel / QR Peserta.
       </p>
       <p class="mono" id="eventUrl" style="font-size:12.5px;word-break:break-all"></p>
     </div>
@@ -88,11 +88,11 @@
 <script>
   const base = location.origin === "null" || location.protocol === "file:"
     ? "" : location.href.replace(/tickets\.html.*$/, "");
-  const checkinUrl = (base || "") + "checkin.html";
+  const checkinUrl = (base || "") + "hadir.html";
 
-  // QR event -> buka halaman check-in
+  // QR event -> buka halaman self check-in siswa (tanpa akses panel lain)
   new QRCode(document.getElementById("eventQr"), {
-    text: checkinUrl || "checkin.html",
+    text: checkinUrl || "hadir.html",
     width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M,
   });
   document.getElementById("eventUrl").textContent = checkinUrl;

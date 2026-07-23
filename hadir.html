@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Self Check-in Peserta — FaithToGrow</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d9488'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>FG</text></svg>" />
+  <style>
+    /* Halaman siswa: tanpa navigasi apa pun */
+    .siswa-topbar {
+      background: linear-gradient(120deg, #134e4a 0%, var(--teal-dark) 60%, var(--blue) 140%);
+      color: #fff; padding: 18px 22px; text-align: center;
+    }
+    .siswa-topbar .t1 { font-weight: 800; font-size: 18px; letter-spacing: -.3px; }
+    .siswa-topbar .t2 { font-size: 12px; opacity: .85; margin-top: 3px; letter-spacing: .6px; text-transform: uppercase; font-weight: 600; }
+
+    .name-suggest {
+      margin-top: 12px; text-align: left; border: 1.5px solid var(--border);
+      border-radius: 12px; overflow: hidden; display: none; background: #fff;
+    }
+    .name-suggest.show { display: block; }
+    .suggest-item {
+      padding: 14px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .suggest-item:last-child { border-bottom: none; }
+    .suggest-item:active, .suggest-item:hover { background: var(--teal-light); }
+    .suggest-name { font-weight: 700; font-size: 15px; }
+    .suggest-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .btn-hadir {
+      width: 100%; justify-content: center; font-size: 18px; padding: 16px;
+      border-radius: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="siswa-topbar">
+  <div class="t1">FaithToGrow — Self Check-in</div>
+  <div class="t2">Future Builders Fellowship 2026 · Onboarding Day</div>
+</header>
+
+<main class="checkin-wrap">
+
+  <div class="scan-card" id="searchCard">
+    <div class="scan-icon">🙋</div>
+    <h2>Konfirmasi Kehadiranmu</h2>
+    <p>Ketik <b>nama panjang</b> sesuai data pendaftaran, pilih namamu, lalu klik tombol <b>Hadir</b>.</p>
+
+    <div class="scan-input-row">
+      <input type="text" id="nameInput" class="scan-input" style="text-transform:none;letter-spacing:0"
+        placeholder="Ketik nama panjangmu..." autocomplete="off" autofocus />
+    </div>
+    <div class="name-suggest" id="nameSuggest"></div>
+    <p id="notFoundMsg" style="display:none;color:var(--amber);font-weight:600;font-size:14px;margin-top:14px">
+      Nama tidak ditemukan di data pendaftaran.<br/>Silakan hubungi petugas di meja registrasi. 🙏
+    </p>
+  </div>
+
+  <div id="resultArea"></div>
+
+</main>
+
+<script src="data.js"></script>
+<script>
+  let participants = ftgLoad();
+  const $ = (id) => document.getElementById(id);
+
+  function nameMatches(q) {
+    q = q.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return participants.filter(p => p.nama.toLowerCase().includes(q)).slice(0, 5);
+  }
+
+  function renderSuggest() {
+    const q = $("nameInput").value;
+    const m = nameMatches(q);
+    const box = $("nameSuggest");
+    $("notFoundMsg").style.display = (q.trim().length >= 3 && !m.length) ? "block" : "none";
+    if (!m.length) { box.classList.remove("show"); box.innerHTML = ""; return; }
+    box.innerHTML = m.map(p => `
+      <div class="suggest-item" onclick="showConfirm('${p.id}')">
+        <div>
+          <div class="suggest-name">${p.nama}</div>
+          <div class="suggest-sub">${p.track} · ${p.asal !== "-" ? p.asal : p.kota}</div>
+        </div>
+        ${p.hadir
+          ? '<span class="chip chip-green"><span class="dot"></span> Hadir</span>'
+          : '<span class="chip chip-amber"><span class="dot"></span> Belum</span>'}
+      </div>`).join("");
+    box.classList.add("show");
+  }
+
+  /* nama dipilih -> tampilkan data + tombol HADIR */
+  function showConfirm(id) {
+    participants = ftgLoad();
+    const p = participants.find(x => x.id === id);
+    if (!p) return;
+    $("nameSuggest").classList.remove("show");
+    $("nameInput").value = p.nama;
+
+    if (p.hadir) {
+      $("resultArea").innerHTML = `
+        <div class="result-card result-done" style="text-align:center">
+          <div class="big-check">✔</div>
+          <h2 style="font-size:21px">${p.nama}</h2>
+          <p style="color:var(--green);font-weight:700;margin-top:6px">Kamu sudah tercatat HADIR (${p.waktu})</p>
+          <p style="color:var(--muted);font-size:14px;margin-top:8px">Tidak perlu check-in ulang. Selamat mengikuti acara! 🎉</p>
+        </div>`;
+      return;
+    }
+
+    $("resultArea").innerHTML = `
+      <div class="result-card result-found">
+        <span class="result-tag tag-teal">✔ Data Kamu Ditemukan</span>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="dl">Nama</div><div class="dv">${p.nama}</div></div>
+          <div class="detail-item"><div class="dl">Track</div><div class="dv">${p.track}</div></div>
+        </div>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:18px">
+          Pastikan ini benar namamu, lalu klik tombol di bawah.
+        </p>
+        <button class="btn btn-green btn-hadir" onclick="confirmHadir('${p.id}')">🙋 HADIR</button>
+      </div>`;
+  }
+
+  /* klik HADIR -> sistem mencatat hadir */
+  function confirmHadir(id) {
+    participants = ftgLoad();
+    const p = participants.find(x => x.id === id);
+    if (!p) return;
+    p.hadir = true;
+    p.waktu = ftgNow();
+    ftgSave(participants);
+    $("resultArea").innerHTML = `
+      <div class="result-card result-done" style="text-align:center">
+        <div class="big-check">✔</div>
+        <h2 style="font-size:21px">${p.nama}</h2>
+        <p style="color:var(--green);font-weight:800;font-size:17px;margin-top:8px">Kehadiran Tercatat — ${p.waktu} ✔</p>
+        <p style="color:var(--muted);font-size:14px;margin-top:10px">
+          Terima kasih! Silakan lanjut ke area acara. Selamat mengikuti Future Builders Fellowship 2026! 🎉
+        </p>
+      </div>`;
+    $("searchCard").style.display = "none";
+  }
+
+  $("nameInput").addEventListener("input", renderSuggest);
+  $("nameInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const m = nameMatches($("nameInput").value);
+      if (m.length === 1) showConfirm(m[0].id);
+    }
+  });
+
+  /* QR e-ticket per peserta: hadir.html?id=FBF-2026-XXX -> langsung tampil kartu konfirmasi */
+  const urlId = new URLSearchParams(location.search).get("id");
+  if (urlId) {
+    const p = participants.find(x => x.id.toUpperCase() === urlId.toUpperCase());
+    if (p) showConfirm(p.id);
+  }
+</script>
+</body>
+</html>
