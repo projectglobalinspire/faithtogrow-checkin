@@ -6,6 +6,19 @@
   <title>FaithToGrow — EventCheck-in Dashboard</title>
   <script src="auth.js"></script>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 50;
+      background: rgba(15, 23, 42, .55);
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+      background: #fff; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.3);
+      padding: 28px 30px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
+      animation: slideUp .25s ease;
+    }
+  </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d9488'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>FG</text></svg>" />
 </head>
 <body>
@@ -89,8 +102,55 @@
         <option value="belum">Belum Hadir</option>
       </select>
     </div>
+    <button class="btn btn-green" id="btnAdd">＋ Input Manual Siswa</button>
     <button class="btn btn-primary" id="btnExport">⬇ Export CSV</button>
   </section>
+
+  <!-- Modal input manual siswa -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-card">
+      <h3 style="font-size:19px">＋ Input Manual Siswa Baru</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin-top:6px;line-height:1.6">
+        Untuk siswa yang mau check-in tapi datanya belum ada. Setelah disimpan,
+        siswa tinggal <b>scan QR lagi → ketik namanya</b> → nama langsung muncul → klik HADIR.
+      </p>
+      <form class="form-grid" style="margin-top:18px" onsubmit="submitManual(event)">
+        <div class="form-field full">
+          <label>Nama Panjang Siswa</label>
+          <input type="text" id="mNama" required placeholder="cth: Andi Saputra" />
+        </div>
+        <div class="form-field">
+          <label>Track</label>
+          <select id="mTrack">
+            <option value="Career Track">Career Track</option>
+            <option value="Entrepreneurship">Entrepreneurship</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Provinsi</label>
+          <select id="mProv"></select>
+        </div>
+        <div class="form-field">
+          <label>Kota / Kabupaten</label>
+          <input type="text" id="mKota" required placeholder="cth: Kota Bogor" />
+        </div>
+        <div class="form-field">
+          <label>Institusi (opsional)</label>
+          <input type="text" id="mAsal" placeholder="cth: Universitas Brawijaya" />
+        </div>
+        <div class="form-field full" style="flex-direction:row;align-items:center;gap:10px">
+          <input type="checkbox" id="mHadir" style="width:18px;height:18px" />
+          <label for="mHadir" style="text-transform:none;font-size:14px;letter-spacing:0;cursor:pointer">
+            Langsung tandai hadir sekarang (tanpa perlu scan ulang)
+          </label>
+        </div>
+        <div class="form-field full" style="flex-direction:row;gap:10px">
+          <button type="button" class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeModal()">Batal</button>
+          <button type="submit" class="btn btn-green" style="flex:2;justify-content:center">💾 Simpan Data Siswa</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Table -->
   <section class="table-wrap">
@@ -118,12 +178,44 @@
 
   const $ = (id) => document.getElementById(id);
 
-  // populate batch filter
+  // populate batch filter + provinsi modal
   FTG_BATCHES.forEach(b => {
     const opt = document.createElement("option");
     opt.value = b; opt.textContent = b;
     $("filterBatch").appendChild(opt);
+    const opt2 = opt.cloneNode(true);
+    $("mProv").appendChild(opt2);
   });
+
+  /* ---------- Input manual siswa oleh LO ---------- */
+  function openModal() { $("addModal").classList.add("show"); $("mNama").focus(); }
+  function closeModal() { $("addModal").classList.remove("show"); }
+
+  function submitManual(e) {
+    e.preventDefault();
+    participants = ftgLoad();
+    const langsung = $("mHadir").checked;
+    const p = {
+      id: ftgNextId(participants),
+      nama: $("mNama").value.trim(),
+      track: $("mTrack").value,
+      provinsi: $("mProv").value,
+      kota: $("mKota").value.trim(),
+      asal: $("mAsal").value.trim() || "-",
+      hadir: langsung,
+      waktu: langsung ? ftgNow() : null,
+    };
+    participants.push(p);
+    ftgSave(participants);
+    closeModal();
+    e.target.reset();
+    render();
+    alert("✔ " + p.nama + " berhasil disimpan (" + p.id + ").\n" +
+      (langsung ? "Status: sudah tercatat HADIR." : "Siswa sekarang bisa scan QR dan ketik namanya untuk klik HADIR."));
+  }
+
+  $("btnAdd").addEventListener("click", openModal);
+  $("addModal").addEventListener("click", (e) => { if (e.target === $("addModal")) closeModal(); });
 
   function render() {
     const total = participants.length;
