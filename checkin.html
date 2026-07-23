@@ -6,6 +6,39 @@
   <title>Meja Registrasi — FaithToGrow EventCheck-in</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d9488'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>FG</text></svg>" />
+  <style>
+    .tabs { display: flex; gap: 8px; margin-top: 22px; }
+    .tab-btn {
+      flex: 1; border: 1.5px solid var(--border); background: #fff;
+      border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 700;
+      cursor: pointer; color: var(--muted); transition: .15s;
+    }
+    .tab-btn.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .name-suggest {
+      margin-top: 10px; text-align: left; border: 1.5px solid var(--border);
+      border-radius: 12px; overflow: hidden; display: none;
+    }
+    .name-suggest.show { display: block; }
+    .suggest-item {
+      padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+      display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    }
+    .suggest-item:last-child { border-bottom: none; }
+    .suggest-item:hover, .suggest-item.hl { background: var(--teal-light); }
+    .suggest-name { font-weight: 700; font-size: 14.5px; }
+    .suggest-sub { font-size: 12px; color: var(--muted); }
+
+    #videoWrap { margin-top: 18px; display: none; }
+    #videoWrap.show { display: block; }
+    #camVideo {
+      width: 100%; border-radius: 14px; background: #0f172a;
+      max-height: 340px; object-fit: cover;
+    }
+    .cam-note { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  </style>
 </head>
 <body>
 
@@ -14,11 +47,12 @@
     <div class="brand-logo">FG</div>
     <div>
       <div class="brand-name">FaithToGrow <span>EventCheck-in</span></div>
-      <div class="brand-sub">Future Builders Fellowship — Onboarding Day 2026</div>
+      <div class="brand-sub">Future Builders Fellowship 2026 — Onboarding Day</div>
     </div>
   </div>
   <nav class="topnav">
-    <a class="btn btn-primary" href="checkin.html">🖥️ Meja Registrasi (Scan)</a>
+    <a class="btn btn-primary" href="checkin.html">🖥️ Meja Registrasi</a>
+    <a class="btn btn-ghost" href="tickets.html">🎟️ QR Peserta</a>
     <a class="btn btn-ghost" href="index.html">📊 Monitor Panel</a>
   </nav>
 </header>
@@ -27,26 +61,52 @@
 
   <div class="scan-card">
     <div class="scan-icon">▦</div>
-    <h2>Scan Barcode Peserta</h2>
+    <h2>Check-in Peserta</h2>
     <p>
-      Arahkan scanner ke barcode pada e-ticket peserta, atau ketik ID secara manual lalu tekan
-      <b>Enter</b>. Sistem otomatis mengecek apakah data peserta sudah ada.
+      Scan QR code peserta, atau ketik <b>nama</b> peserta lalu tekan <b>Enter</b> —
+      sistem otomatis mencocokkan dengan data registrasi yang sudah masuk.
     </p>
 
-    <div class="scan-input-row">
-      <input type="text" id="scanInput" class="scan-input mono" placeholder="FTG-2026-XXX" autofocus autocomplete="off" />
-      <button class="btn btn-primary" id="btnScan">Cek Data</button>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="nama" onclick="switchTab('nama')">⌨️ Input Nama</button>
+      <button class="tab-btn" data-tab="kamera" onclick="switchTab('kamera')">📷 Scan Kamera</button>
+      <button class="tab-btn" data-tab="idm" onclick="switchTab('idm')">🔢 ID Manual</button>
     </div>
 
-    <div class="quick-ids">
-      Coba demo — <b>Skema 1</b> (data sudah ada):
-      <code onclick="fillScan('FTG-2026-004')">FTG-2026-004</code>
-      <code onclick="fillScan('FTG-2026-012')">FTG-2026-012</code>
-      <code onclick="fillScan('FTG-2026-029')">FTG-2026-029</code>
-      <br />
-      <b>Skema 2</b> (belum terdaftar):
-      <code onclick="fillScan('FTG-2026-999')">FTG-2026-999</code>
-      <code onclick="fillScan('WALK-IN-01')">WALK-IN-01</code>
+    <!-- Tab 1: input nama -->
+    <div class="tab-panel active" id="panel-nama">
+      <div class="scan-input-row">
+        <input type="text" id="nameInput" class="scan-input" style="text-transform:none;letter-spacing:0"
+          placeholder="Ketik nama peserta..." autocomplete="off" autofocus />
+        <button class="btn btn-primary" onclick="submitName()">Enter ↵</button>
+      </div>
+      <div class="name-suggest" id="nameSuggest"></div>
+    </div>
+
+    <!-- Tab 2: kamera -->
+    <div class="tab-panel" id="panel-kamera">
+      <div id="videoWrap"><video id="camVideo" playsinline muted></video></div>
+      <button class="btn btn-primary" id="btnCam" style="margin-top:18px;width:100%;justify-content:center"
+        onclick="toggleCam()">📷 Nyalakan Kamera Scanner</button>
+      <p class="cam-note">Arahkan QR code e-ticket peserta ke kamera. Butuh izin kamera &amp; koneksi HTTPS.</p>
+    </div>
+
+    <!-- Tab 3: ID manual -->
+    <div class="tab-panel" id="panel-idm">
+      <div class="scan-input-row">
+        <input type="text" id="scanInput" class="scan-input mono" placeholder="FBF-2026-XXX" autocomplete="off" />
+        <button class="btn btn-primary" onclick="handleScan()">Cek Data</button>
+      </div>
+      <div class="quick-ids">
+        Coba demo — <b>Skema 1</b> (data sudah ada):
+        <code onclick="fillScan('FBF-2026-001')">FBF-2026-001</code>
+        <code onclick="fillScan('FBF-2026-005')">FBF-2026-005</code>
+        <code onclick="fillScan('FBF-2026-014')">FBF-2026-014</code>
+        <br />
+        <b>Skema 2</b> (belum terdaftar):
+        <code onclick="fillScan('FBF-2026-999')">FBF-2026-999</code>
+        <code onclick="fillScan('WALK-IN-01')">WALK-IN-01</code>
+      </div>
     </div>
   </div>
 
@@ -55,26 +115,169 @@
 </main>
 
 <script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
   let participants = ftgLoad();
   const $ = (id) => document.getElementById(id);
+  let hlIndex = -1;
 
-  function fillScan(id) {
-    $("scanInput").value = id;
-    handleScan();
+  /* ---------- Tabs ---------- */
+  function switchTab(name) {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + name));
+    if (name !== "kamera") stopCam();
+    if (name === "nama") $("nameInput").focus();
+    if (name === "idm") $("scanInput").focus();
   }
+
+  /* ============================================================
+     TAB NAMA — ketik nama, Enter -> terdaftar (Skema 1)
+     ============================================================ */
+  function nameMatches(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return [];
+    return participants.filter(p => p.nama.toLowerCase().includes(q)).slice(0, 6);
+  }
+
+  function renderSuggest() {
+    const q = $("nameInput").value;
+    const m = nameMatches(q);
+    const box = $("nameSuggest");
+    if (!q.trim() || !m.length) { box.classList.remove("show"); box.innerHTML = ""; hlIndex = -1; return; }
+    box.innerHTML = m.map((p, i) => `
+      <div class="suggest-item ${i === hlIndex ? "hl" : ""}" onclick="pickParticipant('${p.id}')">
+        <div>
+          <div class="suggest-name">${p.nama}</div>
+          <div class="suggest-sub mono">${p.id} · ${p.asal !== "-" ? p.asal : p.kota}</div>
+        </div>
+        ${p.hadir
+          ? '<span class="chip chip-green"><span class="dot"></span> Hadir</span>'
+          : '<span class="chip chip-amber"><span class="dot"></span> Belum</span>'}
+      </div>`).join("");
+    box.classList.add("show");
+  }
+
+  function submitName() {
+    participants = ftgLoad();
+    const q = $("nameInput").value.trim();
+    if (!q) return;
+    const m = nameMatches(q);
+    if (m.length && hlIndex >= 0 && m[hlIndex]) return pickParticipant(m[hlIndex].id);
+    if (m.length === 1) return pickParticipant(m[0].id);
+    if (m.length > 1) { hlIndex = 0; renderSuggest(); return; }
+    // tidak ditemukan -> Skema 2
+    renderNotFound(q, /*isName*/ true);
+    $("nameSuggest").classList.remove("show");
+  }
+
+  function pickParticipant(id) {
+    participants = ftgLoad();
+    const p = participants.find(x => x.id === id);
+    if (!p) return;
+    $("nameSuggest").classList.remove("show");
+    $("nameInput").value = p.nama;
+    if (p.hadir) return renderFound(p); // sudah hadir -> info saja
+    // langsung terdaftar hadir sesuai alur: input nama -> enter -> berhasil terdaftar
+    p.hadir = true;
+    p.waktu = ftgNow();
+    ftgSave(participants);
+    renderSuccess(p, "Nama cocok dengan data registrasi — kehadiran berhasil dicatat!");
+  }
+
+  $("nameInput") && (function () {
+    $("nameInput").addEventListener("input", () => { hlIndex = -1; renderSuggest(); });
+    $("nameInput").addEventListener("keydown", (e) => {
+      const m = nameMatches($("nameInput").value);
+      if (e.key === "ArrowDown") { hlIndex = Math.min(hlIndex + 1, m.length - 1); renderSuggest(); e.preventDefault(); }
+      else if (e.key === "ArrowUp") { hlIndex = Math.max(hlIndex - 1, 0); renderSuggest(); e.preventDefault(); }
+      else if (e.key === "Enter") submitName();
+    });
+  })();
+
+  /* ============================================================
+     TAB KAMERA — scan QR pakai kamera (BarcodeDetector / jsQR)
+     ============================================================ */
+  let camStream = null, camRAF = null, camOn = false;
+
+  async function toggleCam() {
+    if (camOn) { stopCam(); return; }
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (err) {
+      alert("Tidak bisa mengakses kamera: " + err.message + "\nGunakan tab Input Nama / ID Manual.");
+      return;
+    }
+    camOn = true;
+    $("videoWrap").classList.add("show");
+    $("btnCam").textContent = "⏹ Matikan Kamera";
+    const video = $("camVideo");
+    video.srcObject = camStream;
+    await video.play();
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const detector = ("BarcodeDetector" in window)
+      ? new BarcodeDetector({ formats: ["qr_code"] }) : null;
+
+    async function tick() {
+      if (!camOn) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        let code = null;
+        if (detector) {
+          try {
+            const codes = await detector.detect(video);
+            if (codes.length) code = codes[0].rawValue;
+          } catch (e) { /* fall through */ }
+        }
+        if (!code && typeof jsQR !== "undefined") {
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0);
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const found = jsQR(img.data, img.width, img.height);
+          if (found) code = found.data;
+        }
+        if (code) { stopCam(); processCode(code); return; }
+      }
+      camRAF = requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  function stopCam() {
+    camOn = false;
+    if (camRAF) cancelAnimationFrame(camRAF);
+    if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+    const v = $("camVideo"); if (v) v.srcObject = null;
+    $("videoWrap") && $("videoWrap").classList.remove("show");
+    $("btnCam") && ($("btnCam").textContent = "📷 Nyalakan Kamera Scanner");
+  }
+
+  /* ============================================================
+     TAB ID MANUAL / hasil scan
+     ============================================================ */
+  function fillScan(id) { switchTab("idm"); $("scanInput").value = id; handleScan(); }
 
   function handleScan() {
-    participants = ftgLoad(); // sync with monitor panel
-    const code = $("scanInput").value.trim().toUpperCase();
+    const code = $("scanInput").value.trim();
     if (!code) { $("scanInput").focus(); return; }
-
-    const p = participants.find(x => x.id.toUpperCase() === code);
-    if (p) renderFound(p);
-    else renderNotFound(code);
+    processCode(code);
   }
 
-  /* ---------- SKEMA 1: data peserta SUDAH ada di sistem ---------- */
+  function processCode(raw) {
+    participants = ftgLoad();
+    // QR bisa berisi URL (…checkin.html?id=FBF-2026-001) atau ID langsung
+    let code = raw.trim();
+    try {
+      const u = new URL(code);
+      code = u.searchParams.get("id") || code;
+    } catch (e) { /* bukan URL */ }
+    code = code.toUpperCase();
+    const p = participants.find(x => x.id.toUpperCase() === code);
+    if (p) renderFound(p);
+    else renderNotFound(code, false);
+  }
+
+  /* ---------- SKEMA 1: data sudah ada ---------- */
   function renderFound(p) {
     if (p.hadir) {
       $("resultArea").innerHTML = `
@@ -83,32 +286,28 @@
           <div class="detail-grid">
             ${detail("Nama Peserta", p.nama)}
             ${detail("ID Registrasi", p.id, true)}
-            ${detail("Track / Program", p.track)}
-            ${detail("Batch", p.batch)}
-            ${detail("Asal Kampus", p.asal)}
+            ${detail("Track", p.track)}
+            ${detail("Domisili", p.kota)}
+            ${detail("Institusi", p.asal)}
             ${detail("Waktu Check-in", p.waktu, true)}
           </div>
-          <p style="color:var(--muted);font-size:14px">
-            Peserta ini sudah tercatat hadir sebelumnya. Tidak perlu registrasi ulang.
-          </p>
+          <p style="color:var(--muted);font-size:14px">Peserta sudah tercatat hadir. Tidak perlu registrasi ulang.</p>
         </div>`;
       return;
     }
-
     $("resultArea").innerHTML = `
       <div class="result-card result-found">
         <span class="result-tag tag-teal">✔ Data Ditemukan — Sudah Terdaftar</span>
         <div class="detail-grid">
           ${detail("Nama Peserta", p.nama)}
           ${detail("ID Registrasi", p.id, true)}
-          ${detail("Track / Program", p.track)}
-          ${detail("Batch", p.batch)}
-          ${detail("Asal Kampus", p.asal)}
+          ${detail("Track", p.track)}
+          ${detail("Domisili", p.kota + ", " + p.provinsi)}
+          ${detail("Institusi", p.asal)}
           ${detail("Status", "Belum Hadir")}
         </div>
         <p style="color:var(--muted);font-size:14px;margin-bottom:18px">
-          Data registrasi sudah masuk ke sistem sebelumnya. Cukup verifikasi identitas peserta,
-          lalu checklist kehadiran di bawah ini.
+          Data registrasi sudah masuk duluan ke sistem. Verifikasi identitas peserta, lalu checklist kehadiran.
         </p>
         <button class="btn btn-green" style="width:100%;justify-content:center;font-size:16px;padding:14px"
           onclick="confirmHadir('${p.id}')">✔ Checklist Hadir Sekarang</button>
@@ -122,46 +321,49 @@
     p.hadir = true;
     p.waktu = ftgNow();
     ftgSave(participants);
-    renderSuccess(p, "Kehadiran berhasil dicatat. Data peserta sudah tersinkron ke Monitor Panel.");
+    renderSuccess(p, "Kehadiran berhasil dicatat. Data tersinkron ke Monitor Panel.");
   }
 
-  /* ---------- SKEMA 2: data BELUM ada — input registrasi baru ---------- */
-  function renderNotFound(code) {
-    const batchOpts = FTG_BATCHES.map(b => `<option value="${b}">${b}</option>`).join("");
+  /* ---------- SKEMA 2: belum terdaftar ---------- */
+  function renderNotFound(codeOrName, isName) {
+    const label = isName
+      ? `Nama <b>"${codeOrName}"</b> tidak ditemukan di data registrasi.`
+      : `Kode <b class="mono">${codeOrName}</b> belum terdaftar di sistem.`;
     $("resultArea").innerHTML = `
       <div class="result-card result-notfound">
         <span class="result-tag tag-amber">⚠ Data Tidak Ditemukan</span>
         <p style="font-size:14.5px;line-height:1.6;margin-bottom:4px">
-          Kode <b class="mono">${code}</b> belum terdaftar di sistem.
-          Lakukan input data registrasi baru untuk peserta ini (walk-in / on-site registration).
+          ${label} Lakukan input registrasi baru (walk-in / on-site).
         </p>
-        <form class="form-grid" id="newForm" onsubmit="submitNew(event)">
+        <form class="form-grid" onsubmit="submitNew(event)">
           <div class="form-field full">
             <label>Nama Lengkap Peserta</label>
-            <input type="text" id="fNama" required placeholder="cth: Andi Saputra" />
+            <input type="text" id="fNama" required value="${isName ? codeOrName.replace(/"/g, "") : ""}" placeholder="cth: Andi Saputra" />
           </div>
           <div class="form-field">
-            <label>Track / Program</label>
+            <label>Track</label>
             <select id="fTrack">
               <option value="Career Track">Career Track</option>
               <option value="Entrepreneurship">Entrepreneurship</option>
             </select>
           </div>
           <div class="form-field">
-            <label>Batch / Kota</label>
-            <select id="fBatch">${batchOpts}</select>
+            <label>Provinsi</label>
+            <select id="fProv">${FTG_BATCHES.map(b => `<option value="${b}">${b}</option>`).join("")}</select>
           </div>
-          <div class="form-field full">
-            <label>Asal Kampus / Institusi</label>
-            <input type="text" id="fAsal" required placeholder="cth: Universitas Brawijaya" />
+          <div class="form-field">
+            <label>Kota / Kabupaten</label>
+            <input type="text" id="fKota" required placeholder="cth: Kota Bogor" />
+          </div>
+          <div class="form-field">
+            <label>Institusi</label>
+            <input type="text" id="fAsal" placeholder="cth: Universitas Brawijaya" />
           </div>
           <button type="submit" class="btn btn-primary form-field full" style="justify-content:center;font-size:16px;padding:14px">
             ＋ Daftarkan &amp; Checklist Hadir
           </button>
         </form>
-        <p style="color:var(--muted);font-size:13px">
-          Peserta baru akan langsung tercatat hadir dan mendapatkan ID registrasi otomatis.
-        </p>
+        <p style="color:var(--muted);font-size:13px">Peserta baru langsung tercatat hadir &amp; mendapat ID otomatis.</p>
       </div>`;
     $("fNama").focus();
   }
@@ -173,46 +375,54 @@
       id: ftgNextId(participants),
       nama: $("fNama").value.trim(),
       track: $("fTrack").value,
-      batch: $("fBatch").value,
-      asal: $("fAsal").value.trim(),
+      provinsi: $("fProv").value,
+      kota: $("fKota").value.trim(),
+      asal: $("fAsal").value.trim() || "-",
       hadir: true,
       waktu: ftgNow(),
     };
     participants.push(p);
     ftgSave(participants);
-    renderSuccess(p, "Registrasi baru berhasil. Peserta langsung tercatat hadir dengan ID " + p.id + ".");
+    renderSuccess(p, "Registrasi baru berhasil — peserta langsung tercatat hadir dengan ID " + p.id + ".");
   }
 
-  /* ---------- Success state ---------- */
+  /* ---------- Success ---------- */
   function renderSuccess(p, msg) {
     $("resultArea").innerHTML = `
       <div class="result-card result-done" style="text-align:center">
         <div class="big-check">✔</div>
         <h2 style="font-size:22px">${p.nama}</h2>
-        <p style="color:var(--muted);font-size:14.5px;margin:8px 0 18px">${msg}</p>
+        <p style="color:var(--green);font-weight:700;font-size:15px;margin-top:6px">Berhasil Terdaftar — HADIR ✔</p>
+        <p style="color:var(--muted);font-size:14px;margin:8px 0 18px">${msg}</p>
         <div class="detail-grid" style="text-align:left">
           ${detail("ID Registrasi", p.id, true)}
           ${detail("Waktu Check-in", p.waktu, true)}
-          ${detail("Track / Program", p.track)}
-          ${detail("Batch", p.batch)}
+          ${detail("Track", p.track)}
+          ${detail("Domisili", p.kota)}
         </div>
         <button class="btn btn-primary" style="width:100%;justify-content:center;padding:13px"
-          onclick="resetScan()">▦ Scan Peserta Berikutnya</button>
+          onclick="resetScan()">▦ Peserta Berikutnya</button>
       </div>`;
   }
 
   function resetScan() {
     $("resultArea").innerHTML = "";
     $("scanInput").value = "";
-    $("scanInput").focus();
+    $("nameInput").value = "";
+    hlIndex = -1;
+    $("nameSuggest").classList.remove("show");
+    switchTab("nama");
   }
 
   function detail(label, value, mono) {
     return `<div class="detail-item"><div class="dl">${label}</div><div class="dv ${mono ? "mono" : ""}">${value}</div></div>`;
   }
 
-  $("btnScan").addEventListener("click", handleScan);
   $("scanInput").addEventListener("keydown", (e) => { if (e.key === "Enter") handleScan(); });
+
+  // dukung QR per-peserta yang berisi URL ?id=FBF-2026-XXX
+  const urlId = new URLSearchParams(location.search).get("id");
+  if (urlId) { switchTab("idm"); $("scanInput").value = urlId.toUpperCase(); handleScan(); }
 </script>
 </body>
 </html>

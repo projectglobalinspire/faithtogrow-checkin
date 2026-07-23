@@ -14,11 +14,12 @@
     <div class="brand-logo">FG</div>
     <div>
       <div class="brand-name">FaithToGrow <span>EventCheck-in</span></div>
-      <div class="brand-sub">Future Builders Fellowship — Onboarding Day 2026</div>
+      <div class="brand-sub">Future Builders Fellowship 2026 — Onboarding Day</div>
     </div>
   </div>
   <nav class="topnav">
-    <a class="btn btn-ghost" href="checkin.html">🖥️ Meja Registrasi (Scan)</a>
+    <a class="btn btn-ghost" href="checkin.html">🖥️ Meja Registrasi</a>
+    <a class="btn btn-ghost" href="tickets.html">🎟️ QR Peserta</a>
     <a class="btn btn-primary" href="index.html">📊 Monitor Panel</a>
   </nav>
 </header>
@@ -64,19 +65,19 @@
   </section>
 
   <!-- Breakdown -->
-  <h2 class="section-title">Breakdown Kehadiran per Batch / Kota</h2>
+  <h2 class="section-title">Breakdown Kehadiran per Provinsi</h2>
   <section class="batches" id="batchGrid"></section>
 
   <!-- Toolbar -->
   <section class="toolbar">
     <div class="search">
       <span>🔍</span>
-      <input type="text" id="searchInput" placeholder="Cari nama peserta, ID, atau kampus..." />
+      <input type="text" id="searchInput" placeholder="Cari nama peserta, ID, kota, atau institusi..." />
     </div>
     <div class="filter-group">
-      <span>🏙️ Batch:</span>
+      <span>🏙️ Provinsi:</span>
       <select id="filterBatch">
-        <option value="">Semua Batch (All)</option>
+        <option value="">Semua Provinsi (All)</option>
       </select>
     </div>
     <div class="filter-group">
@@ -97,8 +98,8 @@
         <tr>
           <th>Nama Peserta</th>
           <th>Track / Program</th>
-          <th>Batch</th>
-          <th>Asal Kampus</th>
+          <th>Domisili</th>
+          <th>Institusi</th>
           <th>Status Kehadiran</th>
           <th>Waktu Check-in</th>
           <th>Opsi Tindakan</th>
@@ -134,7 +135,7 @@
 
     // batch breakdown
     $("batchGrid").innerHTML = FTG_BATCHES.map(b => {
-      const list = participants.filter(p => p.batch === b);
+      const list = participants.filter(p => p.provinsi === b);
       const h = list.filter(p => p.hadir).length;
       const bp = list.length ? Math.round(h / list.length * 100) : 0;
       return `
@@ -154,10 +155,10 @@
     const fs = $("filterStatus").value;
 
     const rows = participants.filter(p => {
-      if (fb && p.batch !== fb) return false;
+      if (fb && p.provinsi !== fb) return false;
       if (fs === "hadir" && !p.hadir) return false;
       if (fs === "belum" && p.hadir) return false;
-      if (q && !(p.nama.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.asal.toLowerCase().includes(q))) return false;
+      if (q && !(p.nama.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.asal.toLowerCase().includes(q) || (p.kota || "").toLowerCase().includes(q))) return false;
       return true;
     });
 
@@ -173,7 +174,7 @@
           <div class="p-id mono">${p.id}</div>
         </td>
         <td>${p.track}</td>
-        <td><span class="chip chip-batch">📍 ${p.batch}</span></td>
+        <td><span class="chip chip-batch">📍 ${p.kota}</span></td>
         <td>${p.asal}</td>
         <td>${p.hadir
           ? `<span class="chip chip-green"><span class="dot"></span> Hadir</span>`
@@ -207,9 +208,9 @@
   });
 
   $("btnExport").addEventListener("click", () => {
-    const header = "ID,Nama,Track,Batch,Asal,Status,Waktu Check-in";
+    const header = "ID,Nama,Track,Provinsi,Kota,Institusi,Status,Waktu Check-in";
     const lines = participants.map(p =>
-      [p.id, `"${p.nama}"`, `"${p.track}"`, p.batch, `"${p.asal}"`, p.hadir ? "Hadir" : "Belum Hadir", p.waktu || ""].join(","));
+      [p.id, `"${p.nama}"`, `"${p.track}"`, `"${p.provinsi}"`, `"${p.kota}"`, `"${p.asal}"`, p.hadir ? "Hadir" : "Belum Hadir", p.waktu || ""].join(","));
     const blob = new Blob([header + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
