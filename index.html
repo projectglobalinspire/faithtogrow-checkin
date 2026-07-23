@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FaithToGrow — EventCheck-in Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d9488'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>FG</text></svg>" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-logo">FG</div>
+    <div>
+      <div class="brand-name">FaithToGrow <span>EventCheck-in</span></div>
+      <div class="brand-sub">Future Builders Fellowship — Onboarding Day 2026</div>
+    </div>
+  </div>
+  <nav class="topnav">
+    <a class="btn btn-ghost" href="checkin.html">🖥️ Meja Registrasi (Scan)</a>
+    <a class="btn btn-primary" href="index.html">📊 Monitor Panel</a>
+  </nav>
+</header>
+
+<main class="container">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div>
+      <h1>LO Monitoring Panel <span class="live-pill"><span class="live-dot"></span> Real-time Active</span></h1>
+      <p>Rekapitulasi mandiri &amp; monitoring kehadiran seluruh peserta fellowship secara real-time.</p>
+    </div>
+    <div class="hero-actions">
+      <button class="btn btn-white btn-icon" id="btnRefresh" title="Refresh">🔄</button>
+      <button class="btn btn-danger" id="btnClear">Reset Data Demo</button>
+      <a class="btn btn-white" href="checkin.html">⎋ Ke Meja Registrasi</a>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="stats">
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Total Terdaftar</div>
+        <div class="stat-value" id="statTotal">0<small>Peserta</small></div>
+      </div>
+      <div class="stat-icon ic-teal">👥</div>
+    </div>
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Sudah Check-in</div>
+        <div class="stat-value" id="statHadir">0<small>Peserta</small></div>
+      </div>
+      <div class="stat-icon ic-green">✅</div>
+    </div>
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Persentase Kehadiran</div>
+        <div class="stat-value" id="statPct">0%<small>dari target</small></div>
+      </div>
+      <div class="stat-icon ic-blue">📈</div>
+    </div>
+  </section>
+
+  <!-- Breakdown -->
+  <h2 class="section-title">Breakdown Kehadiran per Batch / Kota</h2>
+  <section class="batches" id="batchGrid"></section>
+
+  <!-- Toolbar -->
+  <section class="toolbar">
+    <div class="search">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Cari nama peserta, ID, atau kampus..." />
+    </div>
+    <div class="filter-group">
+      <span>🏙️ Batch:</span>
+      <select id="filterBatch">
+        <option value="">Semua Batch (All)</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <span>⚙️ Status:</span>
+      <select id="filterStatus">
+        <option value="">Semua Status</option>
+        <option value="hadir">Hadir</option>
+        <option value="belum">Belum Hadir</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" id="btnExport">⬇ Export CSV</button>
+  </section>
+
+  <!-- Table -->
+  <section class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Nama Peserta</th>
+          <th>Track / Program</th>
+          <th>Batch</th>
+          <th>Asal Kampus</th>
+          <th>Status Kehadiran</th>
+          <th>Waktu Check-in</th>
+          <th>Opsi Tindakan</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </section>
+
+</main>
+
+<script src="data.js"></script>
+<script>
+  let participants = ftgLoad();
+
+  const $ = (id) => document.getElementById(id);
+
+  // populate batch filter
+  FTG_BATCHES.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b; opt.textContent = b;
+    $("filterBatch").appendChild(opt);
+  });
+
+  function render() {
+    const total = participants.length;
+    const hadir = participants.filter(p => p.hadir).length;
+    const pct = total ? Math.round(hadir / total * 100) : 0;
+
+    $("statTotal").innerHTML = total + "<small>Peserta</small>";
+    $("statHadir").innerHTML = hadir + "<small>Peserta</small>";
+    $("statPct").innerHTML = pct + "%<small>dari target</small>";
+
+    // batch breakdown
+    $("batchGrid").innerHTML = FTG_BATCHES.map(b => {
+      const list = participants.filter(p => p.batch === b);
+      const h = list.filter(p => p.hadir).length;
+      const bp = list.length ? Math.round(h / list.length * 100) : 0;
+      return `
+        <div class="batch-card">
+          <div class="batch-head">
+            <span class="batch-name">${b}</span>
+            <span class="batch-pct">${bp}%</span>
+          </div>
+          <div class="batch-count">${h} <small>/ ${list.length}</small></div>
+          <div class="bar"><div class="bar-fill" style="width:${bp}%"></div></div>
+        </div>`;
+    }).join("");
+
+    // table
+    const q = $("searchInput").value.trim().toLowerCase();
+    const fb = $("filterBatch").value;
+    const fs = $("filterStatus").value;
+
+    const rows = participants.filter(p => {
+      if (fb && p.batch !== fb) return false;
+      if (fs === "hadir" && !p.hadir) return false;
+      if (fs === "belum" && p.hadir) return false;
+      if (q && !(p.nama.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.asal.toLowerCase().includes(q))) return false;
+      return true;
+    });
+
+    if (!rows.length) {
+      $("tableBody").innerHTML = `<tr><td colspan="7" class="empty-row">Tidak ada peserta yang cocok dengan pencarian / filter.</td></tr>`;
+      return;
+    }
+
+    $("tableBody").innerHTML = rows.map(p => `
+      <tr>
+        <td>
+          <div class="p-name">${p.nama}</div>
+          <div class="p-id mono">${p.id}</div>
+        </td>
+        <td>${p.track}</td>
+        <td><span class="chip chip-batch">📍 ${p.batch}</span></td>
+        <td>${p.asal}</td>
+        <td>${p.hadir
+          ? `<span class="chip chip-green"><span class="dot"></span> Hadir</span>`
+          : `<span class="chip chip-amber"><span class="dot"></span> Belum Hadir</span>`}</td>
+        <td class="mono">${p.waktu || "—"}</td>
+        <td>${p.hadir
+          ? `<button class="row-btn cancel" onclick="toggleHadir('${p.id}', false)">✖ Batal Hadir</button>`
+          : `<button class="row-btn check" onclick="toggleHadir('${p.id}', true)">✔ Tandai Hadir</button>`}</td>
+      </tr>`).join("");
+  }
+
+  function toggleHadir(id, val) {
+    const p = participants.find(x => x.id === id);
+    if (!p) return;
+    p.hadir = val;
+    p.waktu = val ? ftgNow() : null;
+    ftgSave(participants);
+    render();
+  }
+
+  $("searchInput").addEventListener("input", render);
+  $("filterBatch").addEventListener("change", render);
+  $("filterStatus").addEventListener("change", render);
+  $("btnRefresh").addEventListener("click", () => { participants = ftgLoad(); render(); });
+
+  $("btnClear").addEventListener("click", () => {
+    if (confirm("Reset semua data demo ke kondisi awal (seed)?")) {
+      participants = ftgReset();
+      render();
+    }
+  });
+
+  $("btnExport").addEventListener("click", () => {
+    const header = "ID,Nama,Track,Batch,Asal,Status,Waktu Check-in";
+    const lines = participants.map(p =>
+      [p.id, `"${p.nama}"`, `"${p.track}"`, p.batch, `"${p.asal}"`, p.hadir ? "Hadir" : "Belum Hadir", p.waktu || ""].join(","));
+    const blob = new Blob([header + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "faithtogrow-checkin.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // auto-refresh so panel picks up check-ins from the registration desk tab
+  setInterval(() => { participants = ftgLoad(); render(); }, 4000);
+  window.addEventListener("storage", () => { participants = ftgLoad(); render(); });
+
+  render();
+</script>
+</body>
+</html>
