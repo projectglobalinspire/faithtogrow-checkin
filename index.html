@@ -103,7 +103,9 @@
       </select>
     </div>
     <button class="btn btn-green" id="btnAdd">＋ Input Manual Siswa</button>
+    <button class="btn btn-ghost" id="btnImport">⬆ Import CSV/Excel</button>
     <button class="btn btn-primary" id="btnExport">⬇ Export CSV</button>
+    <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display:none" />
   </section>
 
   <!-- Modal input manual siswa -->
@@ -173,6 +175,7 @@
 </main>
 
 <script src="data.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
   let participants = ftgLoad();
 
@@ -217,6 +220,87 @@
   $("btnAdd").addEventListener("click", openModal);
   $("addModal").addEventListener("click", (e) => { if (e.target === $("addModal")) closeModal(); });
 
+  /* ---------- Import CSV / Excel oleh LO ---------- */
+  // pemetaan header yang fleksibel: cocok dengan hasil Export CSV,
+  // form pendaftaran asli, maupun variasi umum lainnya
+  const HEADER_MAP = {
+    nama: ["nama", "nama peserta", "nama lengkap", "nama panjang", "name", "full name"],
+    track: ["track", "track / program", "program", "jalur"],
+    provinsi: ["provinsi", "province"],
+    kota: ["kota", "kota / kabupaten", "kabupaten", "domisili", "city"],
+    asal: ["institusi", "asal", "asal kampus", "kampus", "sekolah", "universitas", "institution"],
+    status: ["status", "status kehadiran", "kehadiran"],
+    waktu: ["waktu check-in", "waktu", "jam"],
+  };
+
+  function mapHeader(h) {
+    const clean = String(h || "").trim().toLowerCase();
+    for (const key in HEADER_MAP) {
+      if (HEADER_MAP[key].includes(clean)) return key;
+    }
+    return null;
+  }
+
+  function normalizeTrack(v) {
+    const t = String(v || "").trim().toLowerCase();
+    if (t.startsWith("entre")) return "Entrepreneurship";
+    return "Career Track";
+  }
+
+  function importRows(rows) {
+    participants = ftgLoad();
+    const existing = new Set(participants.map(p => p.nama.trim().toLowerCase()));
+    let added = 0, skipped = 0;
+    rows.forEach(row => {
+      const rec = {};
+      for (const rawKey in row) {
+        const key = mapHeader(rawKey);
+        if (key && !(key in rec)) rec[key] = String(row[rawKey]).trim();
+      }
+      if (!rec.nama) { skipped++; return; }
+      if (existing.has(rec.nama.toLowerCase())) { skipped++; return; }
+      const hadir = /^hadir$/i.test(rec.status || "");
+      const p = {
+        id: ftgNextId(participants),
+        nama: rec.nama,
+        track: normalizeTrack(rec.track),
+        provinsi: rec.provinsi || "Lainnya",
+        kota: rec.kota || "-",
+        asal: rec.asal || "-",
+        hadir: hadir,
+        waktu: hadir ? (rec.waktu || ftgNow()) : null,
+      };
+      participants.push(p);
+      existing.add(p.nama.toLowerCase());
+      added++;
+    });
+    ftgSave(participants);
+    render();
+    alert("✔ Import selesai.\nDitambahkan: " + added + " peserta.\nDilewati (duplikat / tanpa nama): " + skipped + ".");
+  }
+
+  $("btnImport").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        if (!rows.length) { alert("File kosong atau format tidak dikenali."); return; }
+        if (confirm("Ditemukan " + rows.length + " baris data.\nImport sekarang? (duplikat nama otomatis dilewati)")) {
+          importRows(rows);
+        }
+      } catch (err) {
+        alert("Gagal membaca file: " + err.message);
+      }
+      e.target.value = "";
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
   function render() {
     const total = participants.length;
     const hadir = participants.filter(p => p.hadir).length;
@@ -226,8 +310,12 @@
     $("statHadir").innerHTML = hadir + "<small>Peserta</small>";
     $("statPct").innerHTML = pct + "%<small>dari target</small>";
 
-    // batch breakdown
-    $("batchGrid").innerHTML = FTG_BATCHES.map(b => {
+    // breakdown provinsi (dinamis: provinsi baru dari import ikut muncul)
+    const provs = [...new Set([...FTG_BATCHES, ...participants.map(p => p.provinsi)])];
+    const fbSel = $("filterBatch").value;
+    $("filterBatch").innerHTML = '<option value="">Semua Provinsi (All)</option>' +
+      provs.map(b => `<option value="${b}" ${b === fbSel ? "selected" : ""}>${b}</option>`).join("");
+    $("batchGrid").innerHTML = provs.map(b => {
       const list = participants.filter(p => p.provinsi === b);
       const h = list.filter(p => p.hadir).length;
       const bp = list.length ? Math.round(h / list.length * 100) : 0;
