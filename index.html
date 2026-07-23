@@ -76,7 +76,7 @@
     </div>
     <div class="hero-actions">
       <button class="btn btn-white btn-icon" id="btnRefresh" title="Refresh">🔄</button>
-      <button class="btn btn-danger" id="btnClear">Reset Data Demo</button>
+      <button class="btn btn-danger" id="btnClear">↺ Reset Status Hadir</button>
       <a class="btn btn-white" href="checkin.html">⎋ Ke Meja Registrasi</a>
     </div>
   </section>
@@ -543,10 +543,14 @@
   $("btnRefresh").addEventListener("click", refresh);
 
   $("btnClear").addEventListener("click", async () => {
-    if (confirm("Reset semua data ke kondisi awal (seed)? Ini menghapus peserta tambahan & status hadir di database.")) {
-      await ftgReset();
-      refresh();
-    }
+    const hadir = participants.filter(p => p.hadir).length;
+    if (!confirm("Reset status kehadiran " + hadir + " peserta jadi BELUM HADIR?\n\n" +
+      "Daftar peserta TIDAK dihapus — hanya status hadir yang dikosongkan (mis. untuk mulai event dari nol).")) return;
+    try {
+      await ftgResetHadir();
+    } catch (e) { alert("Gagal reset: " + e.message); return; }
+    refresh();
+    alert("✔ Status kehadiran sudah direset. Daftar peserta tetap utuh.");
   });
 
   /* ---------- export excel, template, salin belum hadir ---------- */

@@ -97,6 +97,23 @@ async function ftgAddMany(list) {
   ftgCache.push(...list);
 }
 
+/* Reset HANYA status kehadiran (semua -> belum hadir). Daftar peserta tetap utuh. */
+async function ftgResetHadir() {
+  if (!sb) {
+    const list = localLoad();
+    list.forEach(p => { p.hadir = false; p.waktu = null; });
+    localSave(list);
+    ftgCache = list;
+    return;
+  }
+  const { error } = await sb.from("peserta")
+    .update({ hadir: false, waktu: null, updated_by: "LO (reset kehadiran)" })
+    .eq("hadir", true);
+  if (error) throw new Error(error.message);
+  ftgCache.forEach(p => { p.hadir = false; p.waktu = null; });
+}
+
+/* DANGER: hapus semua peserta & isi ulang seed 14 orang. Tidak dipakai tombol UI. */
 async function ftgReset() {
   if (!sb) {
     localStorage.removeItem(FTG_STORE_KEY);
