@@ -54,21 +54,27 @@
   <div class="siswa-link">Peserta / siswa? <a href="hadir.html">Self check-in di sini</a></div>
 </div>
 
-<script src="auth.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="data.js"></script>
 <script>
-  // sudah login -> langsung masuk
   const next = new URLSearchParams(location.search).get("next") || "index.html";
   const safeNext = ["index.html", "checkin.html", "tickets.html"].includes(next) ? next : "index.html";
-  if (ftgIsAuthed()) location.replace(safeNext);
 
-  function doLogin(e) {
+  // sudah login -> langsung masuk
+  ftgSession().then(s => { if (s) location.replace(safeNext); });
+
+  async function doLogin(e) {
     e.preventDefault();
-    if (ftgLogin(document.getElementById("loEmail").value, document.getElementById("loPass").value)) {
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true; btn.textContent = "Memeriksa...";
+    try {
+      await ftgSignIn(document.getElementById("loEmail").value, document.getElementById("loPass").value);
       location.replace(safeNext);
-    } else {
+    } catch (err) {
       document.getElementById("errMsg").classList.add("show");
       document.getElementById("loPass").value = "";
       document.getElementById("loPass").focus();
+      btn.disabled = false; btn.textContent = "Masuk →";
     }
   }
 </script>

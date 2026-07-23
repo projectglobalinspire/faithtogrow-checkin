@@ -4,7 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FaithToGrow — EventCheck-in Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="data.js"></script>
   <script src="auth.js"></script>
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
   <style>
     .modal-overlay {
@@ -18,6 +21,29 @@
       padding: 28px 30px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
       animation: slideUp .25s ease;
     }
+    .twocol { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+    @media (max-width: 820px) { .twocol { grid-template-columns: 1fr; } }
+
+    .hour-chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 14px; }
+    .hour-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+    .hour-bar { width: 100%; max-width: 34px; border-radius: 6px 6px 0 0; background: linear-gradient(180deg, var(--teal), var(--blue)); transition: height .4s ease; }
+    .hour-lbl { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+    .hour-val { font-size: 11px; font-weight: 800; color: var(--teal-dark); }
+
+    .log-list { max-height: 260px; overflow-y: auto; }
+    .log-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; }
+    .log-item:last-child { border-bottom: none; }
+    .log-empty { color: var(--muted); padding: 16px 0; font-size: 13.5px; }
+    .log-who { color: var(--muted); font-size: 12px; }
+    .log-time { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+    .toast-box { position: fixed; right: 16px; bottom: 16px; z-index: 100; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      background: var(--navy); color: #fff; border-radius: 12px; padding: 12px 16px;
+      font-size: 13.5px; font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,.3);
+      animation: slideUp .25s ease; max-width: 320px;
+    }
+    .toast.batal { background: var(--red); }
   </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d9488'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>FG</text></svg>" />
 </head>
@@ -82,6 +108,23 @@
   <h2 class="section-title">Breakdown Kehadiran per Provinsi</h2>
   <section class="batches" id="batchGrid"></section>
 
+  <h2 class="section-title">Breakdown per Track &amp; Grafik Check-in per Jam</h2>
+  <section class="twocol">
+    <div class="batches" id="trackGrid" style="grid-template-columns:1fr 1fr"></div>
+    <div class="batch-card">
+      <div class="batch-head"><span class="batch-name">⏰ Check-in per Jam</span></div>
+      <div class="hour-chart" id="hourChart"></div>
+    </div>
+  </section>
+
+  <h2 class="section-title">Riwayat Check-in Terbaru (Live)</h2>
+  <section class="batch-card" style="padding:6px 20px">
+    <div id="logList" class="log-list"><div class="log-empty">Belum ada aktivitas.</div></div>
+  </section>
+
+  <!-- toast notifikasi -->
+  <div id="toastBox" class="toast-box"></div>
+
   <!-- Toolbar -->
   <section class="toolbar">
     <div class="search">
@@ -104,7 +147,10 @@
     </div>
     <button class="btn btn-green" id="btnAdd">＋ Input Manual Siswa</button>
     <button class="btn btn-ghost" id="btnImport">⬆ Import CSV/Excel</button>
-    <button class="btn btn-primary" id="btnExport">⬇ Export CSV</button>
+    <button class="btn btn-ghost" id="btnTemplate">📄 Template Import</button>
+    <button class="btn btn-ghost" id="btnCopyBelum">📋 Salin Belum Hadir</button>
+    <button class="btn btn-primary" id="btnExportXlsx">⬇ Export Excel</button>
+    <button class="btn btn-ghost" id="btnExport">⬇ CSV</button>
     <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display:none" />
   </section>
 
@@ -174,8 +220,6 @@
 
 </main>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
   let participants = [];
@@ -185,6 +229,42 @@
   async function refresh() {
     participants = await ftgLoad();
     render();
+    renderLog();
+  }
+
+  /* ---------- riwayat log ---------- */
+  async function renderLog() {
+    const logs = await ftgLogList(15);
+    if (!logs.length) return;
+    $("logList").innerHTML = logs.map(l => `
+      <div class="log-item">
+        <div>
+          <b>${l.nama}</b> ${l.aksi === "checkin" ? "✅ check-in" : "✖ dibatalkan"}
+          <span class="log-who">· oleh ${l.oleh || "?"}</span>
+        </div>
+        <span class="log-time">${new Date(l.waktu).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+      </div>`).join("");
+  }
+
+  /* ---------- toast + suara ---------- */
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880; g.gain.value = .08;
+      o.start(); o.stop(ctx.currentTime + .18);
+    } catch (e) { /* autoplay policy */ }
+  }
+
+  function showToast(log) {
+    const el = document.createElement("div");
+    el.className = "toast" + (log.aksi === "batal" ? " batal" : "");
+    el.textContent = (log.aksi === "checkin" ? "🔔 " : "✖ ") + log.nama +
+      (log.aksi === "checkin" ? " baru saja check-in" : " dibatalkan kehadirannya");
+    $("toastBox").appendChild(el);
+    beep();
+    setTimeout(() => el.remove(), 6000);
   }
 
   // populate batch filter + provinsi modal
@@ -340,6 +420,36 @@
         </div>`;
     }).join("");
 
+    // breakdown per track
+    $("trackGrid").innerHTML = ["Career Track", "Entrepreneurship"].map(t => {
+      const list = participants.filter(p => p.track === t);
+      const h = list.filter(p => p.hadir).length;
+      const tp = list.length ? Math.round(h / list.length * 100) : 0;
+      return `
+        <div class="batch-card">
+          <div class="batch-head"><span class="batch-name">${t === "Career Track" ? "💼" : "🚀"} ${t}</span><span class="batch-pct">${tp}%</span></div>
+          <div class="batch-count">${h} <small>/ ${list.length}</small></div>
+          <div class="bar"><div class="bar-fill" style="width:${tp}%"></div></div>
+        </div>`;
+    }).join("");
+
+    // grafik check-in per jam (dari kolom waktu "HH.MM")
+    const byHour = {};
+    participants.filter(p => p.hadir && p.waktu).forEach(p => {
+      const h = p.waktu.split(".")[0];
+      byHour[h] = (byHour[h] || 0) + 1;
+    });
+    const hours = Object.keys(byHour).sort();
+    const maxH = Math.max(1, ...Object.values(byHour));
+    $("hourChart").innerHTML = hours.length
+      ? hours.map(h => `
+          <div class="hour-col">
+            <span class="hour-val">${byHour[h]}</span>
+            <div class="hour-bar" style="height:${Math.round(byHour[h] / maxH * 80)}px"></div>
+            <span class="hour-lbl">${h}:00</span>
+          </div>`).join("")
+      : '<div class="log-empty">Belum ada check-in.</div>';
+
     // table
     const q = $("searchInput").value.trim().toLowerCase();
     const fb = $("filterBatch").value;
@@ -379,7 +489,7 @@
 
   async function toggleHadir(id, val) {
     try {
-      await ftgSetHadir(id, val);
+      await ftgSetHadir(id, val, "LO Panel");
     } catch (e) { alert("Gagal menyimpan: " + e.message); }
     refresh();
   }
@@ -396,6 +506,40 @@
     }
   });
 
+  /* ---------- export excel, template, salin belum hadir ---------- */
+  function exportRows() {
+    return participants.map(p => ({
+      "ID": p.id, "Nama": p.nama, "Track": p.track, "Provinsi": p.provinsi,
+      "Kota": p.kota, "Institusi": p.asal,
+      "Status": p.hadir ? "Hadir" : "Belum Hadir", "Waktu Check-in": p.waktu || "",
+    }));
+  }
+
+  $("btnExportXlsx").addEventListener("click", () => {
+    const ws = XLSX.utils.json_to_sheet(exportRows());
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Kehadiran");
+    XLSX.writeFile(wb, "rekap-kehadiran-fbf2026.xlsx");
+  });
+
+  $("btnTemplate").addEventListener("click", () => {
+    const ws = XLSX.utils.json_to_sheet([{
+      "Nama": "Contoh: Andi Saputra", "Track": "career", "Provinsi": "Jawa Barat",
+      "Kota": "Kota Bogor", "Institusi": "Universitas Contoh", "Status": "Belum Hadir",
+    }]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "template-import-peserta.xlsx");
+  });
+
+  $("btnCopyBelum").addEventListener("click", () => {
+    const belum = participants.filter(p => !p.hadir).map(p => "- " + p.nama);
+    if (!belum.length) { alert("Semua peserta sudah hadir! 🎉"); return; }
+    navigator.clipboard.writeText("Belum hadir (" + belum.length + "):\n" + belum.join("\n"))
+      .then(() => alert("✔ " + belum.length + " nama belum hadir tersalin — tinggal paste ke WA."))
+      .catch(() => alert("Gagal menyalin ke clipboard."));
+  });
+
   $("btnExport").addEventListener("click", () => {
     const header = "ID,Nama,Track,Provinsi,Kota,Institusi,Status,Waktu Check-in";
     const lines = participants.map(p =>
@@ -408,12 +552,18 @@
     URL.revokeObjectURL(a.href);
   });
 
-  // Realtime: refresh seketika saat ada perubahan di database (WebSocket).
-  // Polling 20 detik hanya sebagai cadangan jika koneksi realtime putus.
-  ftgSubscribe(refresh);
-  setInterval(refresh, 20000);
+  // Realtime: refresh seketika saat ada perubahan di database (WebSocket),
+  // plus toast + suara saat ada log check-in baru.
+  ftgSubscribe((payload) => {
+    if (payload.table === "log_kehadiran" && payload.eventType === "INSERT") showToast(payload.new);
+    refresh();
+  });
+  setInterval(refresh, 20000); // cadangan jika websocket putus
 
   refresh();
+
+  // daftarkan service worker (PWA / cache offline)
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>

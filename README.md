@@ -12,14 +12,21 @@ Dashboard registrasi & monitoring kehadiran **Future Builders Fellowship 2026 �
 | `hadir.html` | 🌐 Publik | **Self Check-in Siswa** — hasil scan QR: hanya bisa ketik nama panjang → pilih nama → klik HADIR |
 | `login.html` | 🌐 Publik | **Login LO** — gerbang masuk halaman panitia |
 
-## Login LO
+## Login LO (Supabase Auth)
 
-Halaman panitia dilindungi login (email + password, sesi per-browser). Kredensial default di `auth.js` — **ganti sebelum event**:
+Halaman panitia dilindungi **Supabase Auth** (akun tersimpan aman di server, bukan di kode):
 
-- Email: `lo@faithtogrow.org`
-- Password: `FBF2026-LO`
+- Email: `lo@faithtogrow.org` / Password: `FBF2026-LO` (ganti/tambah akun LO di dashboard Supabase → Authentication → Users)
 
-> Catatan: proteksi ini berjalan di sisi klien (cukup untuk gating panitia di event demo, bukan keamanan tingkat server).
+Aturan database (RLS): pengunjung anonim hanya bisa **membaca** daftar & **mengubah status hadir**; tambah/hapus/edit data peserta hanya bisa oleh LO yang login.
+
+## Fitur panel tambahan
+
+- Riwayat check-in live (tabel `log_kehadiran`, terisi otomatis via trigger) + toast & bunyi notifikasi
+- Breakdown per track, grafik check-in per jam, tombol "Salin Belum Hadir" (untuk follow-up WA)
+- Export Excel (.xlsx), template import, import CSV/Excel, input manual
+- Verifikasi self check-in: siswa memasukkan 3 digit terakhir nomor WA (kolom `wa3`)
+- PWA: bisa di-install, halaman tetap terbuka saat offline, check-in offline masuk antrean dan terkirim otomatis saat online
 
 ## Workflow
 
