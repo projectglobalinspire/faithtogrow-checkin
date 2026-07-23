@@ -265,8 +265,8 @@
     $("logList").innerHTML = logs.map(l => `
       <div class="log-item">
         <div>
-          <b>${l.nama}</b> ${l.aksi === "checkin" ? "✅ check-in" : "✖ dibatalkan"}
-          <span class="log-who">· oleh ${l.oleh || "?"}</span>
+          <b>${ftgEsc(l.nama)}</b> ${l.aksi === "checkin" ? "✅ check-in" : "✖ dibatalkan"}
+          <span class="log-who">· oleh ${ftgEsc(l.oleh || "?")}</span>
         </div>
         <span class="log-time">${new Date(l.waktu).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
       </div>`).join("");
@@ -452,7 +452,7 @@
       return `
         <div class="batch-card">
           <div class="batch-head">
-            <span class="batch-name">${b}</span>
+            <span class="batch-name">${ftgEsc(b)}</span>
             <span class="batch-pct">${bp}%</span>
           </div>
           <div class="batch-count">${h} <small>/ ${list.length}</small></div>
@@ -511,15 +511,15 @@
     $("tableBody").innerHTML = rows.map(p => `
       <tr>
         <td>
-          <div class="p-name">${p.nama}</div>
-          <div class="p-id mono">${p.id}</div>
+          <div class="p-name">${ftgEsc(p.nama)}</div>
+          <div class="p-id mono">${ftgEsc(p.id)}</div>
         </td>
         <td>${kontak[p.id]
-          ? `<a class="wa-link mono" href="https://wa.me/${waIntl(kontak[p.id])}" target="_blank" rel="noopener">${kontak[p.id]}</a>`
+          ? `<a class="wa-link mono" href="https://wa.me/${waIntl(kontak[p.id])}" target="_blank" rel="noopener">${ftgEsc(kontak[p.id])}</a>`
           : `<span style="color:var(--muted)">—</span>`}</td>
-        <td>${p.track}</td>
-        <td><span class="chip chip-batch">📍 ${p.kota}</span></td>
-        <td>${p.asal}</td>
+        <td>${ftgEsc(p.track)}</td>
+        <td><span class="chip chip-batch">📍 ${ftgEsc(p.kota)}</span></td>
+        <td>${ftgEsc(p.asal)}</td>
         <td>${p.hadir
           ? `<span class="chip chip-green"><span class="dot"></span> Hadir</span>`
           : `<span class="chip chip-amber"><span class="dot"></span> Belum Hadir</span>`}</td>

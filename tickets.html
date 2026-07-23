@@ -109,9 +109,9 @@
       <div class="ticket-body">
         <div class="ticket-qr" id="qr-${p.id}"></div>
         <div>
-          <div class="ticket-name">${p.nama}</div>
-          <div class="ticket-sub">${p.track}<br/>${p.asal !== "-" ? p.asal + "<br/>" : ""}${p.kota}</div>
-          <div class="ticket-id mono">${p.id}</div>
+          <div class="ticket-name">${ftgEsc(p.nama)}</div>
+          <div class="ticket-sub">${ftgEsc(p.track)}<br/>${p.asal !== "-" ? ftgEsc(p.asal) + "<br/>" : ""}${ftgEsc(p.kota)}</div>
+          <div class="ticket-id mono">${ftgEsc(p.id)}</div>
         </div>
       </div>`;
     grid.appendChild(card);

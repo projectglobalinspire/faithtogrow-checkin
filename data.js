@@ -187,6 +187,12 @@ function ftgNow() {
   return String(d.getHours()).padStart(2, "0") + "." + String(d.getMinutes()).padStart(2, "0");
 }
 
+/* Escape data pengguna sebelum masuk innerHTML (cegah XSS dari nama Google Form) */
+function ftgEsc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 function ftgNextId(list) {
   let max = 0;
   list.forEach(p => {

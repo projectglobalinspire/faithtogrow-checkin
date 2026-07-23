@@ -154,8 +154,8 @@
     box.innerHTML = m.map((p, i) => `
       <div class="suggest-item ${i === hlIndex ? "hl" : ""}" onclick="pickParticipant('${p.id}')">
         <div>
-          <div class="suggest-name">${p.nama}</div>
-          <div class="suggest-sub mono">${p.id} · ${p.asal !== "-" ? p.asal : p.kota}</div>
+          <div class="suggest-name">${ftgEsc(p.nama)}</div>
+          <div class="suggest-sub mono">${ftgEsc(p.id)} · ${ftgEsc(p.asal !== "-" ? p.asal : p.kota)}</div>
         </div>
         ${p.hadir
           ? '<span class="chip chip-green"><span class="dot"></span> Hadir</span>'
@@ -333,8 +333,8 @@
   /* ---------- SKEMA 2: belum terdaftar ---------- */
   function renderNotFound(codeOrName, isName) {
     const label = isName
-      ? `Nama <b>"${codeOrName}"</b> tidak ditemukan di data registrasi.`
-      : `Kode <b class="mono">${codeOrName}</b> belum terdaftar di sistem.`;
+      ? `Nama <b>"${ftgEsc(codeOrName)}"</b> tidak ditemukan di data registrasi.`
+      : `Kode <b class="mono">${ftgEsc(codeOrName)}</b> belum terdaftar di sistem.`;
     $("resultArea").innerHTML = `
       <div class="result-card result-notfound">
         <span class="result-tag tag-amber">⚠ Data Tidak Ditemukan</span>
@@ -399,7 +399,7 @@
     $("resultArea").innerHTML = `
       <div class="result-card result-done" style="text-align:center">
         <div class="big-check">✔</div>
-        <h2 style="font-size:22px">${p.nama}</h2>
+        <h2 style="font-size:22px">${ftgEsc(p.nama)}</h2>
         <p style="color:var(--green);font-weight:700;font-size:15px;margin-top:6px">Berhasil Terdaftar — HADIR ✔</p>
         <p style="color:var(--muted);font-size:14px;margin:8px 0 18px">${msg}</p>
         <div class="detail-grid" style="text-align:left">
@@ -423,7 +423,7 @@
   }
 
   function detail(label, value, mono) {
-    return `<div class="detail-item"><div class="dl">${label}</div><div class="dv ${mono ? "mono" : ""}">${value}</div></div>`;
+    return `<div class="detail-item"><div class="dl">${ftgEsc(label)}</div><div class="dv ${mono ? "mono" : ""}">${ftgEsc(value)}</div></div>`;
   }
 
   $("scanInput").addEventListener("keydown", (e) => { if (e.key === "Enter") handleScan(); });

@@ -96,8 +96,8 @@
     box.innerHTML = m.map(p => `
       <div class="suggest-item" onclick="showConfirm('${p.id}')">
         <div>
-          <div class="suggest-name">${p.nama}</div>
-          <div class="suggest-sub">${p.track} · ${p.asal !== "-" ? p.asal : p.kota}</div>
+          <div class="suggest-name">${ftgEsc(p.nama)}</div>
+          <div class="suggest-sub">${ftgEsc(p.track)} · ${ftgEsc(p.asal !== "-" ? p.asal : p.kota)}</div>
         </div>
         ${p.hadir
           ? '<span class="chip chip-green"><span class="dot"></span> Hadir</span>'
@@ -117,8 +117,8 @@
       $("resultArea").innerHTML = `
         <div class="result-card result-done" style="text-align:center">
           <div class="big-check">✔</div>
-          <h2 style="font-size:21px">${p.nama}</h2>
-          <p style="color:var(--green);font-weight:700;margin-top:6px">Kamu sudah tercatat HADIR (${p.waktu})</p>
+          <h2 style="font-size:21px">${ftgEsc(p.nama)}</h2>
+          <p style="color:var(--green);font-weight:700;margin-top:6px">Kamu sudah tercatat HADIR (${ftgEsc(p.waktu)})</p>
           <p style="color:var(--muted);font-size:14px;margin-top:8px">Tidak perlu check-in ulang. Selamat mengikuti acara! 🎉</p>
         </div>`;
       return;
@@ -129,8 +129,8 @@
       <div class="result-card result-found">
         <span class="result-tag tag-teal">✔ Data Kamu Ditemukan</span>
         <div class="detail-grid">
-          <div class="detail-item"><div class="dl">Nama</div><div class="dv">${p.nama}</div></div>
-          <div class="detail-item"><div class="dl">Track</div><div class="dv">${p.track}</div></div>
+          <div class="detail-item"><div class="dl">Nama</div><div class="dv">${ftgEsc(p.nama)}</div></div>
+          <div class="detail-item"><div class="dl">Track</div><div class="dv">${ftgEsc(p.track)}</div></div>
         </div>
         ${perluVerif ? `
         <div style="margin-bottom:16px">
@@ -177,10 +177,10 @@
     $("resultArea").innerHTML = `
       <div class="result-card result-done" style="text-align:center">
         <div class="big-check">${pending ? "⏳" : "✔"}</div>
-        <h2 style="font-size:21px">${p.nama}</h2>
+        <h2 style="font-size:21px">${ftgEsc(p.nama)}</h2>
         ${pending
           ? `<p style="color:var(--amber);font-weight:800;font-size:16px;margin-top:8px">Tersimpan offline — akan terkirim otomatis saat sinyal kembali</p>`
-          : `<p style="color:var(--green);font-weight:800;font-size:17px;margin-top:8px">Kehadiran Tercatat — ${p.waktu} ✔</p>`}
+          : `<p style="color:var(--green);font-weight:800;font-size:17px;margin-top:8px">Kehadiran Tercatat — ${ftgEsc(p.waktu)} ✔</p>`}
         <div style="text-align:left;background:var(--bg);border-radius:14px;padding:18px 20px;margin-top:18px">
           <div style="font-weight:800;font-size:14px;margin-bottom:10px">📌 Info Acara — Onboarding Day</div>
           <div style="font-size:13px;color:var(--muted);line-height:1.85">
