@@ -117,6 +117,22 @@ async function ftgLogList(limit) {
   return data;
 }
 
+/* ---------- kontak WA (hanya terbaca oleh LO yang login) ---------- */
+async function ftgLoadKontak() {
+  if (!sb) return {};
+  const { data, error } = await sb.from("peserta_kontak").select("*");
+  if (error) return {}; // anon: permission denied -> abaikan
+  const map = {};
+  data.forEach(k => { map[k.id] = k.wa; });
+  return map;
+}
+
+async function ftgSaveKontak(list) { // [{id, wa}]
+  if (!sb || !list.length) return;
+  const { error } = await sb.from("peserta_kontak").upsert(list);
+  if (error) throw new Error(error.message);
+}
+
 /* ---------- realtime ---------- */
 /* onChange(payload) dipanggil setiap ada perubahan peserta / log baru */
 function ftgSubscribe(onChange) {

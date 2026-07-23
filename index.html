@@ -44,6 +44,8 @@
       animation: slideUp .25s ease; max-width: 320px;
     }
     .toast.batal { background: var(--red); }
+    .wa-link { color: var(--teal-dark); font-weight: 700; text-decoration: none; white-space: nowrap; }
+    .wa-link:hover { text-decoration: underline; }
   </style>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230d9488'/><text x='50' y='68' font-size='48' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'>FG</text></svg>" />
 </head>
@@ -186,6 +188,10 @@
           <label>Institusi (opsional)</label>
           <input type="text" id="mAsal" placeholder="cth: Universitas Brawijaya" />
         </div>
+        <div class="form-field">
+          <label>No. WhatsApp (khusus LO)</label>
+          <input type="tel" id="mWa" inputmode="numeric" placeholder="cth: 08123456789" />
+        </div>
         <div class="form-field full" style="flex-direction:row;align-items:center;gap:10px">
           <input type="checkbox" id="mHadir" style="width:18px;height:18px" />
           <label for="mHadir" style="text-transform:none;font-size:14px;letter-spacing:0;cursor:pointer">
@@ -206,6 +212,7 @@
       <thead>
         <tr>
           <th>Nama Peserta</th>
+          <th>No. WhatsApp</th>
           <th>Track / Program</th>
           <th>Domisili</th>
           <th>Institusi</th>
@@ -223,19 +230,38 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
   let participants = [];
+  let kontak = {}; // { id: "08xxx" } — hanya terisi untuk LO yang login
 
   const $ = (id) => document.getElementById(id);
 
+  // 08xxx / +62xxx -> 62xxx untuk wa.me
+  function waIntl(wa) {
+    let d = String(wa).replace(/[^0-9]/g, "");
+    if (d.startsWith("0")) d = "62" + d.slice(1);
+    else if (!d.startsWith("62")) d = "62" + d;
+    return d;
+  }
+
   async function refresh() {
-    participants = await ftgLoad();
+    const [list, wa] = await Promise.all([ftgLoad(), ftgLoadKontak()]);
+    participants = list;
+    kontak = wa;
     render();
     renderLog();
   }
 
-  /* ---------- riwayat log ---------- */
+  /* ---------- riwayat log (dedup: 1 baris terakhir per peserta) ---------- */
   async function renderLog() {
-    const logs = await ftgLogList(15);
-    if (!logs.length) return;
+    const raw = await ftgLogList(60);
+    if (!raw.length) return;
+    const seen = new Set();
+    const logs = [];
+    for (const l of raw) { // sudah urut terbaru dulu
+      if (seen.has(l.peserta_id)) continue;
+      seen.add(l.peserta_id);
+      logs.push(l);
+      if (logs.length >= 15) break;
+    }
     $("logList").innerHTML = logs.map(l => `
       <div class="log-item">
         <div>
@@ -294,8 +320,10 @@
       hadir: langsung,
       waktu: langsung ? ftgNow() : null,
     };
+    const wa = $("mWa").value.trim();
     try {
       await ftgAdd(p);
+      if (wa) await ftgSaveKontak([{ id: p.id, wa: wa }]);
     } catch (err) { alert("Gagal menyimpan: " + err.message); return; }
     closeModal();
     e.target.reset();
@@ -318,6 +346,7 @@
     asal: ["institusi", "asal", "asal kampus", "kampus", "sekolah", "universitas", "institution"],
     status: ["status", "status kehadiran", "kehadiran"],
     waktu: ["waktu check-in", "waktu", "jam"],
+    wa: ["whatsapp", "no. whatsapp", "no whatsapp", "nomor whatsapp", "wa", "no wa", "no. wa", "hp", "no hp", "telepon", "phone"],
   };
 
   function mapHeader(h) {
@@ -339,6 +368,7 @@
     const existing = new Set(participants.map(p => p.nama.trim().toLowerCase()));
     const all = participants.slice();
     const newRecs = [];
+    const newKontak = [];
     let skipped = 0;
     rows.forEach(row => {
       const rec = {};
@@ -360,10 +390,12 @@
       };
       all.push(p);
       newRecs.push(p);
+      if (rec.wa) newKontak.push({ id: p.id, wa: rec.wa });
       existing.add(p.nama.toLowerCase());
     });
     try {
       await ftgAddMany(newRecs);
+      if (newKontak.length) await ftgSaveKontak(newKontak);
     } catch (err) { alert("Gagal import: " + err.message); return; }
     refresh();
     alert("✔ Import selesai.\nDitambahkan: " + newRecs.length + " peserta.\nDilewati (duplikat / tanpa nama): " + skipped + ".");
@@ -464,7 +496,7 @@
     });
 
     if (!rows.length) {
-      $("tableBody").innerHTML = `<tr><td colspan="7" class="empty-row">Tidak ada peserta yang cocok dengan pencarian / filter.</td></tr>`;
+      $("tableBody").innerHTML = `<tr><td colspan="8" class="empty-row">Tidak ada peserta yang cocok dengan pencarian / filter.</td></tr>`;
       return;
     }
 
@@ -474,6 +506,9 @@
           <div class="p-name">${p.nama}</div>
           <div class="p-id mono">${p.id}</div>
         </td>
+        <td>${kontak[p.id]
+          ? `<a class="wa-link mono" href="https://wa.me/${waIntl(kontak[p.id])}" target="_blank" rel="noopener">${kontak[p.id]}</a>`
+          : `<span style="color:var(--muted)">—</span>`}</td>
         <td>${p.track}</td>
         <td><span class="chip chip-batch">📍 ${p.kota}</span></td>
         <td>${p.asal}</td>
@@ -509,7 +544,7 @@
   /* ---------- export excel, template, salin belum hadir ---------- */
   function exportRows() {
     return participants.map(p => ({
-      "ID": p.id, "Nama": p.nama, "Track": p.track, "Provinsi": p.provinsi,
+      "ID": p.id, "Nama": p.nama, "No. WhatsApp": kontak[p.id] || "", "Track": p.track, "Provinsi": p.provinsi,
       "Kota": p.kota, "Institusi": p.asal,
       "Status": p.hadir ? "Hadir" : "Belum Hadir", "Waktu Check-in": p.waktu || "",
     }));
@@ -524,7 +559,7 @@
 
   $("btnTemplate").addEventListener("click", () => {
     const ws = XLSX.utils.json_to_sheet([{
-      "Nama": "Contoh: Andi Saputra", "Track": "career", "Provinsi": "Jawa Barat",
+      "Nama": "Contoh: Andi Saputra", "No. WhatsApp": "08123456789", "Track": "career", "Provinsi": "Jawa Barat",
       "Kota": "Kota Bogor", "Institusi": "Universitas Contoh", "Status": "Belum Hadir",
     }]);
     const wb = XLSX.utils.book_new();
@@ -541,9 +576,9 @@
   });
 
   $("btnExport").addEventListener("click", () => {
-    const header = "ID,Nama,Track,Provinsi,Kota,Institusi,Status,Waktu Check-in";
+    const header = "ID,Nama,No. WhatsApp,Track,Provinsi,Kota,Institusi,Status,Waktu Check-in";
     const lines = participants.map(p =>
-      [p.id, `"${p.nama}"`, `"${p.track}"`, `"${p.provinsi}"`, `"${p.kota}"`, `"${p.asal}"`, p.hadir ? "Hadir" : "Belum Hadir", p.waktu || ""].join(","));
+      [p.id, `"${p.nama}"`, `"${kontak[p.id] || ""}"`, `"${p.track}"`, `"${p.provinsi}"`, `"${p.kota}"`, `"${p.asal}"`, p.hadir ? "Hadir" : "Belum Hadir", p.waktu || ""].join(","));
     const blob = new Blob([header + "\n" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
