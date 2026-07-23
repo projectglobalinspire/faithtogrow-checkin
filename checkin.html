@@ -118,9 +118,12 @@
 <script src="data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-  let participants = ftgLoad();
+  let participants = [];
   const $ = (id) => document.getElementById(id);
   let hlIndex = -1;
+
+  ftgLoad().then(list => { participants = list; });
+  setInterval(async () => { participants = await ftgLoad(); }, 5000);
 
   /* ---------- Tabs ---------- */
   function switchTab(name) {
@@ -159,7 +162,6 @@
   }
 
   function submitName() {
-    participants = ftgLoad();
     const q = $("nameInput").value.trim();
     if (!q) return;
     const m = nameMatches(q);
@@ -171,17 +173,17 @@
     $("nameSuggest").classList.remove("show");
   }
 
-  function pickParticipant(id) {
-    participants = ftgLoad();
+  async function pickParticipant(id) {
     const p = participants.find(x => x.id === id);
     if (!p) return;
     $("nameSuggest").classList.remove("show");
     $("nameInput").value = p.nama;
     if (p.hadir) return renderFound(p); // sudah hadir -> info saja
     // langsung terdaftar hadir sesuai alur: input nama -> enter -> berhasil terdaftar
-    p.hadir = true;
-    p.waktu = ftgNow();
-    ftgSave(participants);
+    try {
+      p.waktu = await ftgSetHadir(id, true);
+      p.hadir = true;
+    } catch (e) { alert("Gagal menyimpan ke database: " + e.message); return; }
     renderSuccess(p, "Nama cocok dengan data registrasi — kehadiran berhasil dicatat!");
   }
 
@@ -264,8 +266,8 @@
     processCode(code);
   }
 
-  function processCode(raw) {
-    participants = ftgLoad();
+  async function processCode(raw) {
+    participants = await ftgLoad();
     // QR bisa berisi URL (…checkin.html?id=FBF-2026-001) atau ID langsung
     let code = raw.trim();
     try {
@@ -315,13 +317,13 @@
       </div>`;
   }
 
-  function confirmHadir(id) {
-    participants = ftgLoad();
+  async function confirmHadir(id) {
     const p = participants.find(x => x.id === id);
     if (!p) return;
-    p.hadir = true;
-    p.waktu = ftgNow();
-    ftgSave(participants);
+    try {
+      p.waktu = await ftgSetHadir(id, true);
+      p.hadir = true;
+    } catch (e) { alert("Gagal menyimpan ke database: " + e.message); return; }
     renderSuccess(p, "Kehadiran berhasil dicatat. Data tersinkron ke Monitor Panel.");
   }
 
@@ -369,9 +371,9 @@
     $("fNama").focus();
   }
 
-  function submitNew(e) {
+  async function submitNew(e) {
     e.preventDefault();
-    participants = ftgLoad();
+    participants = await ftgLoad();
     const p = {
       id: ftgNextId(participants),
       nama: $("fNama").value.trim(),
@@ -382,8 +384,10 @@
       hadir: true,
       waktu: ftgNow(),
     };
+    try {
+      await ftgAdd(p);
+    } catch (err) { alert("Gagal menyimpan ke database: " + err.message); return; }
     participants.push(p);
-    ftgSave(participants);
     renderSuccess(p, "Registrasi baru berhasil — peserta langsung tercatat hadir dengan ID " + p.id + ".");
   }
 

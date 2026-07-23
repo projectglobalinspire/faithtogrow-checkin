@@ -38,4 +38,6 @@ Halaman panitia dilindungi login (email + password, sesi per-browser). Kredensia
 
 ## Teknologi
 
-HTML + CSS + JavaScript murni. QR generate: qrcodejs (CDN), QR scan: BarcodeDetector API + fallback jsQR (CDN). Data demo di `localStorage` (tanpa backend). Deploy static di Vercel.
+HTML + CSS + JavaScript murni. QR generate: qrcodejs (CDN), QR scan: BarcodeDetector API + fallback jsQR (CDN). Deploy static di Vercel.
+
+**Database: Supabase** (tabel `peserta`, project `supabase-global-inspire`) — data sinkron real-time lintas perangkat (polling 4–5 detik). Konfigurasi di `data.js` (`SUPABASE_URL` + publishable key; aman untuk sisi klien). Jika konfigurasi dikosongkan, otomatis fallback ke `localStorage` per-browser.

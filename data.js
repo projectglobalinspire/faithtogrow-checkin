@@ -1,14 +1,21 @@
 /* ============================================================
-   FaithToGrow EventCheck-in — shared data layer (localStorage)
-   Data peserta: Future Builders Fellowship 2026 (import xlsx,
-   kontak pribadi sengaja tidak disertakan)
+   FaithToGrow EventCheck-in — data layer
+   Mode REMOTE (Supabase): data sinkron lintas perangkat.
+   Mode LOCAL (fallback): localStorage, per-browser saja —
+   aktif otomatis selama SUPABASE_URL/KEY belum diisi.
+
+   >>> Isi 2 konstanta di bawah dengan nilai dari
+       Supabase: Project Settings -> API <<<
    ============================================================ */
 
-const FTG_STORE_KEY = "fbf_checkin_v2";
+const SUPABASE_URL = "https://adxcfqbcerheznqotltb.supabase.co";
+const SUPABASE_KEY = "sb_publishable_owzDNLkSXFj_xfrJAF7lPQ_crvxQ-b8"; // publishable key (aman utk sisi klien)
 
-/* Data registrasi yang sudah masuk duluan ke sistem (pre-event).
-   Skema 1 -> peserta ada di daftar ini, tinggal checklist hadir.
-   Skema 2 -> peserta tidak ada di daftar, diinput baru di meja registrasi. */
+const FTG_REMOTE = !!(SUPABASE_URL && SUPABASE_KEY);
+const FTG_STORE_KEY = "fbf_checkin_v2";
+const FTG_TABLE = SUPABASE_URL + "/rest/v1/peserta";
+
+/* Data awal (seed) — dipakai saat pertama kali / setelah reset */
 const FTG_SEED = [
   { id: "FBF-2026-001", nama: "Arbi Muhamad Al Maududi",    track: "Career Track",     provinsi: "Jawa Barat",  kota: "Kab. Tasikmalaya",       asal: "IPB University",             hadir: false, waktu: null },
   { id: "FBF-2026-002", nama: "Atqia Ali",                  track: "Career Track",     provinsi: "DKI Jakarta", kota: "Kota Jakarta Timur",     asal: "Jakarta Business School",    hadir: false, waktu: null },
@@ -28,23 +35,107 @@ const FTG_SEED = [
 
 const FTG_BATCHES = ["DKI Jakarta", "Jawa Barat", "Banten", "Jawa Tengah", "Papua"];
 
-function ftgLoad() {
+let ftgCache = [];
+
+/* ---------- helpers ---------- */
+function sbHeaders(extra) {
+  const h = { apikey: SUPABASE_KEY, "Content-Type": "application/json" };
+  // legacy anon key (JWT) butuh header Authorization; publishable key (sb_...) cukup apikey
+  if (!SUPABASE_KEY.startsWith("sb_")) h.Authorization = "Bearer " + SUPABASE_KEY;
+  return Object.assign(h, extra || {});
+}
+
+function localLoad() {
   try {
     const raw = localStorage.getItem(FTG_STORE_KEY);
     if (raw) return JSON.parse(raw);
   } catch (e) { /* corrupt -> reseed */ }
   const fresh = JSON.parse(JSON.stringify(FTG_SEED));
-  ftgSave(fresh);
+  localStorage.setItem(FTG_STORE_KEY, JSON.stringify(fresh));
   return fresh;
 }
 
-function ftgSave(list) {
+function localSave(list) {
   localStorage.setItem(FTG_STORE_KEY, JSON.stringify(list));
 }
 
-function ftgReset() {
-  localStorage.removeItem(FTG_STORE_KEY);
-  return ftgLoad();
+/* ---------- API (async, dipakai semua halaman) ---------- */
+
+/* Ambil semua peserta. Remote: fetch dari Supabase (auto-seed jika kosong).
+   Jika jaringan gagal, pakai cache terakhir. */
+async function ftgLoad() {
+  if (!FTG_REMOTE) { ftgCache = localLoad(); return ftgCache; }
+  try {
+    const r = await fetch(FTG_TABLE + "?select=*&order=id.asc", { headers: sbHeaders() });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    let rows = await r.json();
+    if (!rows.length) {
+      await fetch(FTG_TABLE, {
+        method: "POST",
+        headers: sbHeaders({ Prefer: "resolution=ignore-duplicates" }),
+        body: JSON.stringify(FTG_SEED),
+      });
+      rows = JSON.parse(JSON.stringify(FTG_SEED));
+    }
+    ftgCache = rows;
+    return rows;
+  } catch (e) {
+    console.warn("ftgLoad remote gagal:", e.message);
+    return ftgCache;
+  }
+}
+
+/* Set status hadir seorang peserta. Mengembalikan waktu check-in (atau null). */
+async function ftgSetHadir(id, hadir) {
+  const waktu = hadir ? ftgNow() : null;
+  if (!FTG_REMOTE) {
+    const list = localLoad();
+    const p = list.find(x => x.id === id);
+    if (p) { p.hadir = hadir; p.waktu = waktu; localSave(list); }
+    ftgCache = list;
+    return waktu;
+  }
+  const r = await fetch(FTG_TABLE + "?id=eq." + encodeURIComponent(id), {
+    method: "PATCH",
+    headers: sbHeaders(),
+    body: JSON.stringify({ hadir: hadir, waktu: waktu }),
+  });
+  if (!r.ok) throw new Error("Gagal menyimpan kehadiran (HTTP " + r.status + ")");
+  const c = ftgCache.find(x => x.id === id);
+  if (c) { c.hadir = hadir; c.waktu = waktu; }
+  return waktu;
+}
+
+/* Tambah satu peserta (atau banyak sekaligus via ftgAddMany). */
+async function ftgAdd(p) { return ftgAddMany([p]); }
+
+async function ftgAddMany(list) {
+  if (!list.length) return;
+  if (!FTG_REMOTE) {
+    const cur = localLoad();
+    cur.push(...list);
+    localSave(cur);
+    ftgCache = cur;
+    return;
+  }
+  const r = await fetch(FTG_TABLE, {
+    method: "POST",
+    headers: sbHeaders({ Prefer: "resolution=ignore-duplicates" }),
+    body: JSON.stringify(list),
+  });
+  if (!r.ok) throw new Error("Gagal menyimpan peserta (HTTP " + r.status + ")");
+  ftgCache.push(...list);
+}
+
+/* Reset semua data ke seed awal. */
+async function ftgReset() {
+  if (!FTG_REMOTE) {
+    localStorage.removeItem(FTG_STORE_KEY);
+    return ftgLoad();
+  }
+  await fetch(FTG_TABLE + "?id=neq.___", { method: "DELETE", headers: sbHeaders() });
+  ftgCache = [];
+  return ftgLoad(); // auto-seed karena tabel kosong
 }
 
 function ftgNow() {

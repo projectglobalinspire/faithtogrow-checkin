@@ -386,9 +386,64 @@ tbody tr:hover { background: #f8fafc; }
   margin: 0 auto 14px;
 }
 
+/* ---------- Responsive: tablet (iPad dll) ---------- */
+@media (max-width: 1024px) {
+  .container { padding: 22px 20px 50px; }
+  .stat-value { font-size: 34px; }
+  .hero h1 { font-size: 23px; }
+}
+
+/* ---------- Responsive: HP (Android / iPhone) ---------- */
 @media (max-width: 640px) {
-  .container { padding: 18px 16px 50px; }
-  .topbar { padding: 12px 16px; }
-  .hero { padding: 24px 22px; }
+  .container { padding: 16px 12px 50px; }
+  .topbar { padding: 10px 12px; flex-direction: column; align-items: stretch; gap: 10px; }
+  .brand { justify-content: center; }
+  .topnav { justify-content: center; }
+  .topnav .btn { flex: 1 1 auto; justify-content: center; padding: 9px 10px; font-size: 12.5px; }
+
+  .hero { padding: 20px 18px; flex-direction: column; align-items: stretch; }
+  .hero h1 { font-size: 20px; gap: 8px; }
+  .hero p { font-size: 13px; }
+  .hero-actions { width: 100%; }
+  .hero-actions .btn { flex: 1; justify-content: center; }
+
+  .stats { grid-template-columns: 1fr; gap: 12px; }
+  .stat-card { padding: 18px 20px; }
+  .stat-value { font-size: 30px; }
+  .stat-icon { width: 44px; height: 44px; font-size: 20px; }
+
+  .batches { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .batch-card { padding: 14px 14px; }
+  .batch-name { font-size: 14px; }
+  .batch-count { font-size: 17px; }
+
+  .toolbar { padding: 12px; gap: 10px; }
+  .search { flex-basis: 100%; }
+  .filter-group { flex: 1 1 45%; }
+  .filter-group select { flex: 1; width: 100%; }
+  .toolbar .btn { flex: 1 1 100%; justify-content: center; }
+
+  thead th { padding: 11px 12px; }
+  tbody td { padding: 12px; font-size: 13.5px; }
+
+  .checkin-wrap { padding: 18px 12px 60px; }
+  .scan-card { padding: 22px 18px; }
+  .scan-card h2 { font-size: 20px; }
+  .scan-icon { width: 64px; height: 64px; font-size: 30px; border-radius: 16px; }
+  .scan-input { font-size: 15px; padding: 13px 14px; }
+  .scan-input-row { flex-direction: column; }
+  .scan-input-row .btn { justify-content: center; padding: 13px; }
+
+  .result-card { padding: 20px 18px; }
   .detail-grid, .form-grid { grid-template-columns: 1fr; }
+
+  .event-qr-card { flex-direction: column; text-align: center; }
+  .event-qr-card .event-qr-box { margin: 0 auto; }
+  .ticket-grid { grid-template-columns: 1fr; }
+}
+
+/* layar sangat kecil */
+@media (max-width: 380px) {
+  .batches { grid-template-columns: 1fr; }
+  .brand-name { font-size: 16px; }
 }

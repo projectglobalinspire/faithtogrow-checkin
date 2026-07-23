@@ -177,9 +177,14 @@
 <script src="data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
-  let participants = ftgLoad();
+  let participants = [];
 
   const $ = (id) => document.getElementById(id);
+
+  async function refresh() {
+    participants = await ftgLoad();
+    render();
+  }
 
   // populate batch filter + provinsi modal
   FTG_BATCHES.forEach(b => {
@@ -194,9 +199,9 @@
   function openModal() { $("addModal").classList.add("show"); $("mNama").focus(); }
   function closeModal() { $("addModal").classList.remove("show"); }
 
-  function submitManual(e) {
+  async function submitManual(e) {
     e.preventDefault();
-    participants = ftgLoad();
+    participants = await ftgLoad();
     const langsung = $("mHadir").checked;
     const p = {
       id: ftgNextId(participants),
@@ -208,11 +213,12 @@
       hadir: langsung,
       waktu: langsung ? ftgNow() : null,
     };
-    participants.push(p);
-    ftgSave(participants);
+    try {
+      await ftgAdd(p);
+    } catch (err) { alert("Gagal menyimpan: " + err.message); return; }
     closeModal();
     e.target.reset();
-    render();
+    refresh();
     alert("✔ " + p.nama + " berhasil disimpan (" + p.id + ").\n" +
       (langsung ? "Status: sudah tercatat HADIR." : "Siswa sekarang bisa scan QR dan ketik namanya untuk klik HADIR."));
   }
@@ -247,21 +253,22 @@
     return "Career Track";
   }
 
-  function importRows(rows) {
-    participants = ftgLoad();
+  async function importRows(rows) {
+    participants = await ftgLoad();
     const existing = new Set(participants.map(p => p.nama.trim().toLowerCase()));
-    let added = 0, skipped = 0;
+    const all = participants.slice();
+    const newRecs = [];
+    let skipped = 0;
     rows.forEach(row => {
       const rec = {};
       for (const rawKey in row) {
         const key = mapHeader(rawKey);
         if (key && !(key in rec)) rec[key] = String(row[rawKey]).trim();
       }
-      if (!rec.nama) { skipped++; return; }
-      if (existing.has(rec.nama.toLowerCase())) { skipped++; return; }
+      if (!rec.nama || existing.has(rec.nama.toLowerCase())) { skipped++; return; }
       const hadir = /^hadir$/i.test(rec.status || "");
       const p = {
-        id: ftgNextId(participants),
+        id: ftgNextId(all),
         nama: rec.nama,
         track: normalizeTrack(rec.track),
         provinsi: rec.provinsi || "Lainnya",
@@ -270,13 +277,15 @@
         hadir: hadir,
         waktu: hadir ? (rec.waktu || ftgNow()) : null,
       };
-      participants.push(p);
+      all.push(p);
+      newRecs.push(p);
       existing.add(p.nama.toLowerCase());
-      added++;
     });
-    ftgSave(participants);
-    render();
-    alert("✔ Import selesai.\nDitambahkan: " + added + " peserta.\nDilewati (duplikat / tanpa nama): " + skipped + ".");
+    try {
+      await ftgAddMany(newRecs);
+    } catch (err) { alert("Gagal import: " + err.message); return; }
+    refresh();
+    alert("✔ Import selesai.\nDitambahkan: " + newRecs.length + " peserta.\nDilewati (duplikat / tanpa nama): " + skipped + ".");
   }
 
   $("btnImport").addEventListener("click", () => $("importFile").click());
@@ -367,24 +376,22 @@
       </tr>`).join("");
   }
 
-  function toggleHadir(id, val) {
-    const p = participants.find(x => x.id === id);
-    if (!p) return;
-    p.hadir = val;
-    p.waktu = val ? ftgNow() : null;
-    ftgSave(participants);
-    render();
+  async function toggleHadir(id, val) {
+    try {
+      await ftgSetHadir(id, val);
+    } catch (e) { alert("Gagal menyimpan: " + e.message); }
+    refresh();
   }
 
   $("searchInput").addEventListener("input", render);
   $("filterBatch").addEventListener("change", render);
   $("filterStatus").addEventListener("change", render);
-  $("btnRefresh").addEventListener("click", () => { participants = ftgLoad(); render(); });
+  $("btnRefresh").addEventListener("click", refresh);
 
-  $("btnClear").addEventListener("click", () => {
-    if (confirm("Reset semua data demo ke kondisi awal (seed)?")) {
-      participants = ftgReset();
-      render();
+  $("btnClear").addEventListener("click", async () => {
+    if (confirm("Reset semua data ke kondisi awal (seed)? Ini menghapus peserta tambahan & status hadir di database.")) {
+      await ftgReset();
+      refresh();
     }
   });
 
@@ -400,11 +407,10 @@
     URL.revokeObjectURL(a.href);
   });
 
-  // auto-refresh so panel picks up check-ins from the registration desk tab
-  setInterval(() => { participants = ftgLoad(); render(); }, 4000);
-  window.addEventListener("storage", () => { participants = ftgLoad(); render(); });
+  // auto-refresh: ambil check-in terbaru dari database setiap 4 detik
+  setInterval(refresh, 4000);
 
-  render();
+  refresh();
 </script>
 </body>
 </html>

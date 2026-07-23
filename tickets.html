@@ -100,7 +100,7 @@
 
   // QR per peserta -> URL checkin?id=... (bisa discan HP maupun kamera meja registrasi)
   const grid = document.getElementById("ticketGrid");
-  ftgLoad().forEach(p => {
+  ftgLoad().then(list => list.forEach(p => {
     const card = document.createElement("div");
     card.className = "ticket";
     card.innerHTML = `
@@ -118,7 +118,7 @@
       text: (checkinUrl ? checkinUrl + "?id=" + p.id : p.id),
       width: 110, height: 110, correctLevel: QRCode.CorrectLevel.M,
     });
-  });
+  }));
 </script>
 </body>
 </html>

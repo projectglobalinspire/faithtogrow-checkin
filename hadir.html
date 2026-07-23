@@ -65,8 +65,12 @@
 
 <script src="data.js"></script>
 <script>
-  let participants = ftgLoad();
+  let participants = [];
   const $ = (id) => document.getElementById(id);
+
+  // muat data dari database + refresh berkala agar input manual LO langsung terlihat
+  async function syncData() { participants = await ftgLoad(); }
+  setInterval(syncData, 5000);
 
   function nameMatches(q) {
     q = q.trim().toLowerCase();
@@ -95,7 +99,6 @@
 
   /* nama dipilih -> tampilkan data + tombol HADIR */
   function showConfirm(id) {
-    participants = ftgLoad();
     const p = participants.find(x => x.id === id);
     if (!p) return;
     $("nameSuggest").classList.remove("show");
@@ -126,14 +129,14 @@
       </div>`;
   }
 
-  /* klik HADIR -> sistem mencatat hadir */
-  function confirmHadir(id) {
-    participants = ftgLoad();
+  /* klik HADIR -> sistem mencatat hadir ke database */
+  async function confirmHadir(id) {
     const p = participants.find(x => x.id === id);
     if (!p) return;
-    p.hadir = true;
-    p.waktu = ftgNow();
-    ftgSave(participants);
+    try {
+      p.waktu = await ftgSetHadir(id, true);
+      p.hadir = true;
+    } catch (e) { alert("Gagal menyimpan. Coba lagi atau hubungi petugas.\n" + e.message); return; }
     $("resultArea").innerHTML = `
       <div class="result-card result-done" style="text-align:center">
         <div class="big-check">✔</div>
@@ -155,11 +158,13 @@
   });
 
   /* QR e-ticket per peserta: hadir.html?id=FBF-2026-XXX -> langsung tampil kartu konfirmasi */
-  const urlId = new URLSearchParams(location.search).get("id");
-  if (urlId) {
-    const p = participants.find(x => x.id.toUpperCase() === urlId.toUpperCase());
-    if (p) showConfirm(p.id);
-  }
+  syncData().then(() => {
+    const urlId = new URLSearchParams(location.search).get("id");
+    if (urlId) {
+      const p = participants.find(x => x.id.toUpperCase() === urlId.toUpperCase());
+      if (p) showConfirm(p.id);
+    }
+  });
 </script>
 </body>
 </html>
