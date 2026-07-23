@@ -43,6 +43,10 @@
   <div class="t2">Future Builders Fellowship 2026 · Onboarding Day</div>
 </header>
 
+<div id="offlineBar" style="display:none;background:#d97706;color:#fff;text-align:center;padding:10px 14px;font-size:13.5px;font-weight:700">
+  📴 Kamu sedang offline — check-in akan tersimpan &amp; terkirim otomatis saat sinyal kembali.
+</div>
+
 <main class="checkin-wrap">
 
   <div class="scan-card" id="searchCard">
@@ -65,8 +69,10 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="data.js"></script>
 <script>
+  const WA_GROUP = "https://chat.whatsapp.com/COaOQuk6J9NH6SPcFU5pgy";
   let participants = [];
   const $ = (id) => document.getElementById(id);
 
@@ -190,11 +196,18 @@
             👋 16.35–16.45 — Closing
           </div>
           <a class="btn btn-green" style="width:100%;justify-content:center;margin-top:14px;padding:12px"
-            href="https://chat.whatsapp.com/COaOQuk6J9NH6SPcFU5pgy" target="_blank" rel="noopener">💬 Gabung Grup WhatsApp Peserta</a>
+            href="${WA_GROUP}" target="_blank" rel="noopener">💬 Gabung Grup WhatsApp Peserta</a>
+          <div style="text-align:center;margin-top:14px">
+            <div style="display:inline-block;background:#fff;padding:10px;border-radius:12px;border:1px solid var(--border)" id="waQr"></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:6px">atau scan QR ini untuk gabung grup</div>
+          </div>
         </div>
         <p style="color:var(--muted);font-size:13.5px;margin-top:14px">Selamat mengikuti Future Builders Fellowship 2026! 🎉</p>
       </div>`;
     $("searchCard").style.display = "none";
+    if (typeof QRCode !== "undefined" && $("waQr")) {
+      new QRCode($("waQr"), { text: WA_GROUP, width: 150, height: 150, correctLevel: QRCode.CorrectLevel.M });
+    }
   }
 
   /* ---------- antrean offline ---------- */
@@ -216,6 +229,15 @@
   }
   window.addEventListener("online", flushPending);
   flushPending();
+
+  // indikator status koneksi
+  function updateOnline() {
+    $("offlineBar").style.display = navigator.onLine ? "none" : "block";
+    if (navigator.onLine) flushPending();
+  }
+  window.addEventListener("online", updateOnline);
+  window.addEventListener("offline", updateOnline);
+  updateOnline();
 
   // daftarkan service worker (PWA: halaman tetap terbuka saat offline)
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});

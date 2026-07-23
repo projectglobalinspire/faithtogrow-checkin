@@ -531,6 +531,10 @@
   }
 
   async function toggleHadir(id, val) {
+    if (!val) { // batal hadir -> konfirmasi dulu
+      const p = participants.find(x => x.id === id);
+      if (!confirm("Batalkan kehadiran " + (p ? p.nama : "peserta ini") + "?\nStatusnya akan kembali jadi BELUM HADIR.")) return;
+    }
     try {
       await ftgSetHadir(id, val, "LO Panel");
     } catch (e) { alert("Gagal menyimpan: " + e.message); }
