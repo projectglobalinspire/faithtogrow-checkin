@@ -63,6 +63,7 @@
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="data.js"></script>
 <script>
   let participants = [];
@@ -70,7 +71,8 @@
 
   // muat data dari database + refresh berkala agar input manual LO langsung terlihat
   async function syncData() { participants = await ftgLoad(); }
-  setInterval(syncData, 5000);
+  ftgSubscribe(syncData);          // realtime: input manual LO langsung terlihat
+  setInterval(syncData, 20000);    // cadangan jika websocket putus
 
   function nameMatches(q) {
     q = q.trim().toLowerCase();

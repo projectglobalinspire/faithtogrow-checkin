@@ -138,6 +138,17 @@ async function ftgReset() {
   return ftgLoad(); // auto-seed karena tabel kosong
 }
 
+/* Langganan realtime (WebSocket): panggil onChange setiap ada perubahan
+   di tabel peserta. Butuh supabase-js (CDN) dimuat di halaman. */
+function ftgSubscribe(onChange) {
+  if (!FTG_REMOTE || typeof supabase === "undefined") return null;
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  client.channel("peserta-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "peserta" }, onChange)
+    .subscribe();
+  return client;
+}
+
 function ftgNow() {
   const d = new Date();
   return String(d.getHours()).padStart(2, "0") + "." + String(d.getMinutes()).padStart(2, "0");

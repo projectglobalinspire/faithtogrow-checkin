@@ -174,6 +174,7 @@
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
@@ -407,8 +408,10 @@
     URL.revokeObjectURL(a.href);
   });
 
-  // auto-refresh: ambil check-in terbaru dari database setiap 4 detik
-  setInterval(refresh, 4000);
+  // Realtime: refresh seketika saat ada perubahan di database (WebSocket).
+  // Polling 20 detik hanya sebagai cadangan jika koneksi realtime putus.
+  ftgSubscribe(refresh);
+  setInterval(refresh, 20000);
 
   refresh();
 </script>

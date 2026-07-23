@@ -115,6 +115,7 @@
 
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
@@ -123,7 +124,8 @@
   let hlIndex = -1;
 
   ftgLoad().then(list => { participants = list; });
-  setInterval(async () => { participants = await ftgLoad(); }, 5000);
+  ftgSubscribe(async () => { participants = await ftgLoad(); }); // realtime
+  setInterval(async () => { participants = await ftgLoad(); }, 20000); // cadangan
 
   /* ---------- Tabs ---------- */
   function switchTab(name) {
