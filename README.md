@@ -4,11 +4,22 @@ Dashboard registrasi & monitoring kehadiran **Future Builders Fellowship 2026 �
 
 ## Halaman
 
-| Halaman | Fungsi |
-|---|---|
-| `index.html` | **Monitor Panel** — rekap real-time: total terdaftar, sudah check-in, persentase, breakdown per provinsi, pencarian, filter, export CSV, tandai/batal hadir |
-| `checkin.html` | **Meja Registrasi** — check-in via input nama (autocomplete + Enter), scan QR pakai kamera, atau ID manual |
-| `tickets.html` | **QR Generator** — QR event (self check-in) + e-ticket QR per peserta, siap print |
+| Halaman | Akses | Fungsi |
+|---|---|---|
+| `index.html` | 🔒 LO | **Monitor Panel** — rekap real-time: total terdaftar, sudah check-in, persentase, breakdown per provinsi, pencarian, filter, export CSV, tandai/batal hadir |
+| `checkin.html` | 🔒 LO | **Meja Registrasi** — check-in via input nama, scan QR pakai kamera, atau ID manual |
+| `tickets.html` | 🔒 LO | **QR Generator** — QR event (self check-in) + e-ticket QR per peserta, siap print |
+| `hadir.html` | 🌐 Publik | **Self Check-in Siswa** — hasil scan QR: hanya bisa ketik nama panjang → pilih nama → klik HADIR |
+| `login.html` | 🌐 Publik | **Login LO** — gerbang masuk halaman panitia |
+
+## Login LO
+
+Halaman panitia dilindungi login (email + password, sesi per-browser). Kredensial default di `auth.js` — **ganti sebelum event**:
+
+- Email: `lo@faithtogrow.org`
+- Password: `FBF2026-LO`
+
+> Catatan: proteksi ini berjalan di sisi klien (cukup untuk gating panitia di event demo, bukan keamanan tingkat server).
 
 ## Workflow
 
