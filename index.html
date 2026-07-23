@@ -306,10 +306,17 @@
   function openModal() { $("addModal").classList.add("show"); $("mNama").focus(); }
   function closeModal() { $("addModal").classList.remove("show"); }
 
+  // ambil 3 digit terakhir angka WA -> kode verifikasi self check-in
+  function wa3From(wa) {
+    const d = String(wa || "").replace(/[^0-9]/g, "");
+    return d.length >= 3 ? d.slice(-3) : null;
+  }
+
   async function submitManual(e) {
     e.preventDefault();
     participants = await ftgLoad();
     const langsung = $("mHadir").checked;
+    const wa = $("mWa").value.trim();
     const p = {
       id: ftgNextId(participants),
       nama: $("mNama").value.trim(),
@@ -317,10 +324,10 @@
       provinsi: $("mProv").value,
       kota: $("mKota").value.trim(),
       asal: $("mAsal").value.trim() || "-",
+      wa3: wa3From(wa),
       hadir: langsung,
       waktu: langsung ? ftgNow() : null,
     };
-    const wa = $("mWa").value.trim();
     try {
       await ftgAdd(p);
       if (wa) await ftgSaveKontak([{ id: p.id, wa: wa }]);
@@ -385,6 +392,7 @@
         provinsi: rec.provinsi || "Lainnya",
         kota: rec.kota || "-",
         asal: rec.asal || "-",
+        wa3: wa3From(rec.wa),
         hadir: hadir,
         waktu: hadir ? (rec.waktu || ftgNow()) : null,
       };
